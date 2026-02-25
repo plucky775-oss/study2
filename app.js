@@ -128,6 +128,10 @@
     const lockBtn = $("#lockBtn");
     const printBtn = $("#printBtn");
 
+    // print header(평소 숨김)
+    const printTitle = $("#printTitle");
+    const printMeta = $("#printMeta");
+
     const profileSelect = $("#profileSelect");
     const newProfileBtn = $("#newProfileBtn");
     const renameProfileBtn = $("#renameProfileBtn");
@@ -146,6 +150,8 @@
 
     const subjectChips = $("#subjectChips");
     const lockHint = $("#lockHint");
+
+    const gridScroll = $("#gridScroll");
 
     const gridEl = $("#grid");
     const listRegular = $("#listRegular");
@@ -1024,17 +1030,47 @@
     printBtn.addEventListener("click", () => {
       // 인쇄 전에 비교 모드로 전환 (원복 가능)
       const prev = state.settings.viewMode;
+      const prevScroll = {
+        x: gridScroll ? gridScroll.scrollLeft : 0,
+        y: gridScroll ? gridScroll.scrollTop : 0
+      };
+
       state.settings.viewMode = "compare";
       saveState();
       syncControls();
       renderAll();
       setTimeout(() => {
+        // 인쇄 헤더 갱신 + 스크롤 원점(좌상단)으로 맞추기
+        try{
+          const p = activeProfile();
+          const now = new Date();
+          if(printTitle){
+            printTitle.textContent = `정우 학원 스케줄 · ${p.name} · 정규반/내신반 비교`;
+          }
+          if(printMeta){
+            printMeta.textContent = `출력: ${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())} · (시간표만 1장 출력)`;
+          }
+        }catch(e){ /* ignore */ }
+
+        if(gridScroll){
+          gridScroll.scrollLeft = 0;
+          gridScroll.scrollTop = 0;
+        }
+
         window.print();
         // print 후 다시 원복
         state.settings.viewMode = prev;
         saveState();
         syncControls();
         renderAll();
+
+        // 사용자 스크롤 위치도 원복
+        setTimeout(() => {
+          if(gridScroll){
+            gridScroll.scrollLeft = prevScroll.x;
+            gridScroll.scrollTop = prevScroll.y;
+          }
+        }, 0);
       }, 120);
     });
 

@@ -1,6 +1,6 @@
 /* 정우 학원 스케줄 PWA Service Worker */
-// v5 - 결제/보강 관리 + 알림(앱 알림/캘린더 .ics) 추가
-const CACHE_NAME = "jw-schedule-v5-20260225-1";
+// v6 - 결제방법/계좌정보 추가
+const CACHE_NAME = "jw-schedule-v6-20260225-1";
 const ASSETS = [
   "./",
   "./index.html",

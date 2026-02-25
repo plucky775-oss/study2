@@ -621,15 +621,63 @@
       .grid-scroll{ max-height: calc(100vh - 520px); }
     }
 
+    /* 인쇄 페이지 설정 */
+    @page{ size: A4 landscape; margin: 8mm; }
+
     @media print{
+      /* 한장에 꽉 차게: A4 가로 + 컴팩트 레이아웃 */
+
+      :root{
+        --time-col: 72px;
+        --cell-h: 44px;
+        --header-h: 32px;
+        --grid-min-day: 80px;
+        --badge-font: 10px;
+        --radius: 0px;
+        --radius-sm: 0px;
+      }
+
       body{ background: #fff; }
       header, .panel, .toast{ display: none !important; }
       .wrap{ max-width: none; padding: 0; }
+      .print-only{ display: block !important; }
       .grid-card{ border: none; box-shadow: none; }
       .grid-scroll{ max-height: none; overflow: visible; }
-      .lists{ grid-template-columns: 1fr 1fr 1fr; }
-      .listbox{ box-shadow: none; }
-      .entry{ break-inside: avoid; page-break-inside: avoid; }
+
+      /* 목록은 길어지면 여러 장으로 넘어가므로: 인쇄에서는 시간표(그리드)만 한 장 출력 */
+      #timetableLists{ display: none !important; }
+
+      /* sticky는 인쇄에서 깨질 수 있어 비활성화 */
+      .th, .time{ position: static !important; }
+
+      /* 그리드/배지 컴팩트 */
+      .grid{ min-width: 0 !important; width: 100% !important; }
+      .cell{ padding: 4px; }
+      .cellbtn{ border-radius: 10px; padding: 4px; }
+      .badge{ padding: 3px 6px; font-size: var(--badge-font); }
+      .badge .sub{ font-size: 9px; }
+      .th{ font-size: 12px; }
+      .time{ font-size: 11px; }
+
+      /* 페이지 분할 방지(가능한 범위 내) */
+      .grid-card, .grid{ break-inside: avoid; page-break-inside: avoid; }
+    }
+
+    .print-only{ display: none; }
+    .print-head{
+      padding: 0 0 8px;
+      margin: 0 0 8px;
+      border-bottom: 1px solid #d9deea;
+    }
+    .print-title{
+      font-weight: 900;
+      font-size: 14px;
+      letter-spacing: -.2px;
+    }
+    .print-meta{
+      margin-top: 4px;
+      font-size: 11px;
+      color: #334155;
     }
   </style>
 </head>
@@ -729,6 +777,16 @@
           <input id="payName" type="text" placeholder="학원/수업명 (예: ○○수학)" style="flex:1; min-width:200px;" />
           <input id="paySubject" type="text" placeholder="과목 (예: 수학)" style="width:160px;" />
           <input id="payFee" type="number" inputmode="numeric" placeholder="금액" style="width:120px;" />
+          <select id="payMethod" title="결제방법" style="width:140px;">
+            <option value="transfer">결제: 계좌이체</option>
+            <option value="auto">결제: 자동이체</option>
+            <option value="card">결제: 카드</option>
+            <option value="mobile">결제: 간편결제</option>
+            <option value="cash">결제: 현금</option>
+            <option value="etc">결제: 기타</option>
+          </select>
+          <input id="payBank" type="text" placeholder="은행(선택)" style="width:140px;" />
+          <input id="payAccount" type="text" inputmode="numeric" placeholder="계좌번호(선택)" style="width:220px;" />
           <select id="payDay" title="결제일">
             <option value="">결제일(일)</option>
           </select>
@@ -798,6 +856,12 @@
       </div>
     </section>
 
+    <!-- 인쇄/PDF 전용 헤더(평소에는 숨김) -->
+    <div class="print-only print-head" id="printHeader">
+      <div class="print-title" id="printTitle">정우 학원 스케줄</div>
+      <div class="print-meta" id="printMeta"></div>
+    </div>
+
     <section class="grid-card" id="timetableView">
       <div class="grid-scroll" id="gridScroll">
         <div class="grid" id="grid" aria-label="주간 시간표"></div>
@@ -845,7 +909,7 @@
 
     // localStorage 키는 유지(기존 데이터 보존). 내부 버전만 v5로 확장.
     const STORAGE_KEY = "jw-academy-schedule-v4";
-    const APP_VERSION = 5;
+    const APP_VERSION = 6;
 
     // ====== Utilities ======
     const $ = (sel) => document.querySelector(sel);
@@ -974,6 +1038,39 @@
       return Number.isFinite(n) ? n : fallback;
     }
 
+    // ====== Payment helpers (결제방법/계좌) ======
+    function payMethodLabel(code){
+      const c = String(code||"").trim().toLowerCase();
+      if(c === "transfer") return "계좌이체";
+      if(c === "auto") return "자동이체";
+      if(c === "card") return "카드";
+      if(c === "mobile") return "간편결제";
+      if(c === "cash") return "현금";
+      if(c === "etc") return "기타";
+      return ""; // 미지정
+    }
+
+    function parsePayMethodInput(raw, fallback=""){
+      const s = String(raw||"").trim().toLowerCase();
+      if(!s) return fallback;
+      if(["transfer","auto","card","mobile","cash","etc"].includes(s)) return s;
+      if(s.includes("계좌")) return "transfer";
+      if(s.includes("자동")) return "auto";
+      if(s.includes("카드")) return "card";
+      if(s.includes("간편") || s.includes("페이") || s.includes("pay")) return "mobile";
+      if(s.includes("현금")) return "cash";
+      if(s.includes("기타")) return "etc";
+      return fallback;
+    }
+
+    function formatBankAccount(bank, account){
+      const b = String(bank||"").trim();
+      const a = String(account||"").trim().replace(/\s+/g, "");
+      if(!b && !a) return "";
+      if(b && a) return `${b} ${a}`;
+      return a || b;
+    }
+
     // ====== State ======
     const defaultProfile = () => ({
       id: uid(),
@@ -982,7 +1079,7 @@
       naesin: {},    // slotKey -> {subject, color}
       subjectColors: {}, // subject -> color
       // 결제/보강 관리
-      academies: [], // [{id,name,subject,fee,payDay,remindDays[],remindTime,createdAt,updatedAt}]
+      academies: [], // [{id,name,subject,fee,payDay,payMethod,bank,account,remindDays[],remindTime,createdAt,updatedAt}]
       paymentHistory: {}, // academyId -> {"YYYY-MM": {paidAt, amount}}
       makeups: [], // [{id, academyId, subject, date, start, end, status, remindMin, memo, createdAt, updatedAt}]
       updatedAt: nowStamp()
@@ -1023,6 +1120,10 @@
     const lockBtn = $("#lockBtn");
     const printBtn = $("#printBtn");
 
+    // print header
+    const printTitle = $("#printTitle");
+    const printMeta = $("#printMeta");
+
     const profileSelect = $("#profileSelect");
     const newProfileBtn = $("#newProfileBtn");
     const renameProfileBtn = $("#renameProfileBtn");
@@ -1043,6 +1144,9 @@
     const payName = $("#payName");
     const paySubject = $("#paySubject");
     const payFee = $("#payFee");
+    const payMethod = $("#payMethod");
+    const payBank = $("#payBank");
+    const payAccount = $("#payAccount");
     const payDay = $("#payDay");
     const payRemind = $("#payRemind");
     const payTime = $("#payTime");
@@ -1077,6 +1181,7 @@
     const subjectChips = $("#subjectChips");
     const lockHint = $("#lockHint");
 
+    const gridScroll = $("#gridScroll");
     const gridEl = $("#grid");
     const listRegular = $("#listRegular");
     const listNaesin = $("#listNaesin");
@@ -1115,6 +1220,13 @@
           p.naesin = p.naesin || {};
           p.subjectColors = p.subjectColors || {};
           p.academies = Array.isArray(p.academies) ? p.academies : [];
+          // v6: 결제방법/계좌정보 필드 보강
+          for(const a of p.academies){
+            if(!a || typeof a !== "object") continue;
+            if(a.payMethod === undefined) a.payMethod = "";
+            if(a.bank === undefined) a.bank = "";
+            if(a.account === undefined) a.account = "";
+          }
           p.paymentHistory = p.paymentHistory && typeof p.paymentHistory === "object" ? p.paymentHistory : {};
           p.makeups = Array.isArray(p.makeups) ? p.makeups : [];
           p.updatedAt = p.updatedAt || nowStamp();
@@ -1361,7 +1473,7 @@
 
       // 결제/보강 입력은 잠금 시 비활성화
       for(const el of [
-        payName, paySubject, payFee, payDay, payRemind, payTime, payAddBtn,
+        payName, paySubject, payFee, payMethod, payBank, payAccount, payDay, payRemind, payTime, payAddBtn,
         mkAcademy, mkSubject, mkDate, mkStart, mkEnd, mkStatus, mkRemindMin, mkAddBtn
       ]){
         if(el) el.disabled = disabled;
@@ -2150,6 +2262,15 @@
       }
     }
 
+    function updatePayMethodUI(){
+      if(!payMethod || !payBank || !payAccount) return;
+      const m = String(payMethod.value || "").trim();
+      const showAccount = (m === "transfer" || m === "auto");
+      // 계좌이체/자동이체만 계좌 입력칸 노출
+      payBank.classList.toggle("hidden", !showAccount);
+      payAccount.classList.toggle("hidden", !showAccount);
+    }
+
     function renderPaymentEntry(container, a, due, ym){
       const paid = isPaid(a.id, ym);
       const diff = daysDiff(new Date(), due);
@@ -2160,28 +2281,51 @@
         ? `${remindDays.map(d => d===0 ? "당일" : `${d}일전`).join(" · ")} · ${a.remindTime || "09:00"}`
         : "없음";
 
+      const methodText = payMethodLabel(a.payMethod);
+      const acctText = formatBankAccount(a.bank, a.account);
+
       const statusPill = paid
         ? `<span class="pill ok">완료</span>`
         : (diff < 0 ? `<span class="pill due">미결제(연체)</span>` : `<span class="pill wait">미결제</span>`);
 
       const subjPill = a.subject ? `<span class="pill">${escapeHtml(a.subject)}</span>` : "";
+      const methodPill = methodText ? `<span class="pill">${escapeHtml(methodText)}</span>` : "";
+
+      let methodLine = "";
+      if(methodText && acctText){
+        methodLine = `<div class="meta">방법: <b>${escapeHtml(methodText)}</b> · 계좌: <b>${escapeHtml(acctText)}</b></div>`;
+      }else if(methodText){
+        methodLine = `<div class="meta">방법: <b>${escapeHtml(methodText)}</b></div>`;
+      }else if(acctText){
+        methodLine = `<div class="meta">계좌: <b>${escapeHtml(acctText)}</b></div>`;
+      }
 
       const div = document.createElement("div");
       div.className = "entry";
       div.innerHTML = `
         <div class="left">
-          <div class="topline">${escapeHtml(a.name)} ${statusPill} ${subjPill}</div>
+          <div class="topline">${escapeHtml(a.name)} ${statusPill} ${subjPill} ${methodPill}</div>
           <div class="meta">결제일: <b>${escapeHtml(dueText)}</b> · 금액: <b>${escapeHtml(feeText)}</b></div>
+          ${methodLine}
           <div class="meta">알림: ${escapeHtml(remindText)}</div>
         </div>
         <div class="actions">
-          <button type="button" class="${paid ? "" : ""}">${paid ? "되돌리기" : "결제완료"}</button>
-          <button type="button" class="danger">삭제</button>
+          <button type="button" class="btn-pay">${paid ? "되돌리기" : "결제완료"}</button>
+          <button type="button" class="btn-edit">정보수정</button>
+          ${acctText ? '<button type="button" class="btn-copy">계좌복사</button>' : ""}
+          <button type="button" class="danger btn-del">삭제</button>
         </div>
       `;
-      const [btnPay, btnDel] = div.querySelectorAll("button");
-      btnPay.disabled = !!state.settings.locked;
-      btnDel.disabled = !!state.settings.locked;
+      const btnPay = div.querySelector(".btn-pay");
+      const btnEdit = div.querySelector(".btn-edit");
+      const btnCopy = div.querySelector(".btn-copy");
+      const btnDel = div.querySelector(".btn-del");
+
+      const locked = !!state.settings.locked;
+      if(btnPay) btnPay.disabled = locked;
+      if(btnEdit) btnEdit.disabled = locked;
+      if(btnCopy) btnCopy.disabled = locked;
+      if(btnDel) btnDel.disabled = locked;
 
       btnPay.addEventListener("click", () => {
         if(state.settings.locked) return;
@@ -2203,6 +2347,48 @@
         renderAll();
       });
 
+      btnEdit.addEventListener("click", () => {
+        if(state.settings.locked) return;
+        const curLabel = payMethodLabel(a.payMethod) || "";
+        const mRaw = prompt("결제방법 (계좌이체/자동이체/카드/간편결제/현금/기타)", curLabel);
+        if(mRaw === null) return;
+        const bRaw = prompt("은행 (없으면 비우기)", a.bank || "");
+        if(bRaw === null) return;
+        const accRaw = prompt("계좌번호 (없으면 비우기)", a.account || "");
+        if(accRaw === null) return;
+
+        a.payMethod = parsePayMethodInput(mRaw, a.payMethod || "");
+        a.bank = String(bRaw||"").trim();
+        a.account = String(accRaw||"").trim().replace(/\s+/g, "");
+        a.updatedAt = nowStamp();
+        updateProfileStamp();
+        saveState();
+        showToast("결제 정보 수정");
+        renderAll();
+      });
+
+      if(btnCopy){
+        btnCopy.addEventListener("click", async () => {
+          if(state.settings.locked) return;
+          const text = formatBankAccount(a.bank, a.account);
+          if(!text){
+            showToast("복사할 계좌 정보가 없습니다");
+            return;
+          }
+          try{
+            if(navigator.clipboard && navigator.clipboard.writeText){
+              await navigator.clipboard.writeText(text);
+              showToast("계좌를 복사했습니다");
+            }else{
+              // fallback: 사용자가 직접 복사
+              prompt("복사해서 사용하세요", text);
+            }
+          }catch(e){
+            prompt("복사해서 사용하세요", text);
+          }
+        });
+      }
+
       btnDel.addEventListener("click", () => {
         if(state.settings.locked) return;
         const ok = confirm(`"${a.name}" 항목을 삭제할까요?\n(결제 기록도 함께 숨겨집니다)`);
@@ -2223,6 +2409,7 @@
       populatePayDayOptions();
       updateNotifHint();
       refreshAcademySelect();
+      updatePayMethodUI();
 
       const now = new Date();
       const y = now.getFullYear();
@@ -2593,7 +2780,16 @@
           lines.push(`UID:${icsEscape(`pay-${a.id}-${ym}`)}`);
           lines.push(`DTSTAMP:${icsDT(now)}`);
           lines.push(`SUMMARY:${icsEscape(`결제: ${a.name}`)}`);
-          const desc = `학기: ${p.name}\n결제일: ${toYMD(due)}\n금액: ${a.fee ? fmtMoney(a.fee)+"원" : "-"}`;
+          const mLabel = payMethodLabel(a.payMethod);
+          const acct = formatBankAccount(a.bank, a.account);
+          const desc = [
+            `학기: ${p.name}`,
+            a.subject ? `과목: ${a.subject}` : null,
+            `결제일: ${toYMD(due)}`,
+            `금액: ${a.fee ? fmtMoney(a.fee)+"원" : "-"}`,
+            mLabel ? `결제방법: ${mLabel}` : null,
+            acct ? `계좌: ${acct}` : null,
+          ].filter(Boolean).join("\n");
           lines.push(`DESCRIPTION:${icsEscape(desc)}`);
           lines.push(`DTSTART:${icsDT(due)}`);
           lines.push(`DTEND:${icsDT(end)}`);
@@ -2685,6 +2881,13 @@
       });
     }
 
+    if(payMethod){
+      payMethod.addEventListener("change", () => {
+        if(state.settings.locked) return;
+        updatePayMethodUI();
+      });
+    }
+
     notifPermBtn.addEventListener("click", async () => {
       if(!("Notification" in window)){
         showToast("이 브라우저는 알림을 지원하지 않습니다.");
@@ -2727,6 +2930,9 @@
       }
       const subject = normalizeSubject(paySubject.value);
       const fee = safeInt(payFee.value, null);
+      const method = (payMethod && payMethod.value) ? String(payMethod.value).trim() : "";
+      const bank = (payBank && payBank.value) ? String(payBank.value).trim() : "";
+      const account = (payAccount && payAccount.value) ? String(payAccount.value).trim().replace(/\s+/g, "") : "";
       const remindDays = (payRemind.value || "")
         .split(",")
         .map(s => safeInt(s, null))
@@ -2739,6 +2945,9 @@
         subject,
         fee,
         payDay: day,
+        payMethod: method,
+        bank,
+        account,
         remindDays,
         remindTime,
         createdAt: nowStamp(),
@@ -2750,6 +2959,8 @@
       // clear minimal
       payName.value = "";
       payFee.value = "";
+      if(payBank) payBank.value = "";
+      if(payAccount) payAccount.value = "";
       // keep subject for fast entry
       showToast("결제 항목 추가");
       renderAll();
@@ -2814,17 +3025,47 @@
     printBtn.addEventListener("click", () => {
       // 인쇄 전에 비교 모드로 전환 (원복 가능)
       const prev = state.settings.viewMode;
+      const prevScroll = {
+        x: gridScroll ? gridScroll.scrollLeft : 0,
+        y: gridScroll ? gridScroll.scrollTop : 0
+      };
+
       state.settings.viewMode = "compare";
       saveState();
       syncControls();
       renderAll();
       setTimeout(() => {
+        // 인쇄 헤더 갱신 + 스크롤 원점(좌상단)으로 맞추기
+        try{
+          const p = activeProfile();
+          const now = new Date();
+          if(printTitle){
+            printTitle.textContent = `정우 학원 스케줄 · ${p.name} · 정규반/내신반 비교`;
+          }
+          if(printMeta){
+            printMeta.textContent = `출력: ${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())} · (시간표만 1장 출력)`;
+          }
+        }catch(e){ /* ignore */ }
+
+        if(gridScroll){
+          gridScroll.scrollLeft = 0;
+          gridScroll.scrollTop = 0;
+        }
+
         window.print();
         // print 후 다시 원복
         state.settings.viewMode = prev;
         saveState();
         syncControls();
         renderAll();
+
+        // 사용자 스크롤 위치도 원복
+        setTimeout(() => {
+          if(gridScroll){
+            gridScroll.scrollLeft = prevScroll.x;
+            gridScroll.scrollTop = prevScroll.y;
+          }
+        }, 0);
       }, 120);
     });
 
