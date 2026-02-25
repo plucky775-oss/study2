@@ -1,0 +1,3058 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="정우스케줄">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./favicon.ico">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <title>정우 학원 스케줄</title>
+  <style>
+    :root{
+      --bg: #f4f6fb;
+      --panel: #ffffff;
+      --panel-2: #fbfbfd;
+      --text: #0f172a;
+      --muted: #6b7280;
+      --border: #d9deea;
+      --border-2: #c7cfe3;
+      --danger: #dc2626;
+
+      --time-col: 86px;
+      --cell-h: 66px;
+      --header-h: 46px;
+
+      --radius: 16px;
+      --radius-sm: 12px;
+
+      --shadow: 0 8px 30px rgba(15,23,42,.08);
+      --shadow-sm: 0 4px 14px rgba(15,23,42,.10);
+
+      --badge-bg: rgba(255,255,255,.82);
+      --badge-border: rgba(15,23,42,.18);
+      --badge-text: #0b1220;
+      --badge-font: 14px;
+
+      --grid-min-day: 92px; /* iPad 한눈에 보이도록 최소폭 조정 */
+    }
+    *{ box-sizing: border-box; }
+    html, body{ height: 100%; }
+    body{
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Apple SD Gothic Neo, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    a{ color: inherit; }
+    button, input, select{
+      font: inherit;
+      font-size: 16px; /* iOS 자동 확대 방지 */
+    }
+    button{
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    button:active{ transform: translateY(1px); }
+    button:disabled{
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    input[type="text"]{
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: var(--panel);
+      outline: none;
+    }
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    textarea{
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: var(--panel);
+      outline: none;
+    }
+    textarea{ resize: vertical; min-height: 92px; }
+    select{
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: var(--panel);
+    }
+    .wrap{
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-bottom: 32px;
+    }
+    header{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+      color: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .titlebox{
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .title{
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .subtitle{
+      font-size: 12px;
+      color: rgba(255,255,255,.78);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .head-actions{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .head-actions button{
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.22);
+      color: #fff;
+      box-shadow: none;
+    }
+
+    .panel{
+      margin-top: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .row{
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 10px 12px;
+      align-items: center;
+      padding: 10px 6px;
+      border-top: 1px solid var(--border);
+    }
+    .row:first-child{ border-top: none; }
+    .label{
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .row .field{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .seg{
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--panel-2);
+    }
+    .seg button{
+      border: none;
+      border-right: 1px solid var(--border);
+      border-radius: 0;
+      padding: 10px 12px;
+      background: transparent;
+      color: var(--text);
+      font-weight: 800;
+    }
+    .seg button:last-child{ border-right: none; }
+    .seg button.on{
+      background: #111827;
+      color: #fff;
+    }
+
+    .toggle{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel-2);
+      font-weight: 700;
+      color: var(--text);
+      user-select: none;
+    }
+    .toggle input{ transform: scale(1.1); }
+
+    .palette{
+      display: inline-flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .colorbtn{
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      border: 2px solid rgba(15,23,42,.20);
+      padding: 0;
+      position: relative;
+    }
+    .colorbtn.on::after{
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,.95);
+      box-shadow: 0 0 0 2px rgba(15,23,42,.25);
+    }
+    .colorpicker{
+      width: 44px;
+      height: 36px;
+      padding: 0;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      overflow: hidden;
+    }
+    .colorpicker input{
+      width: 100%;
+      height: 100%;
+      border: none;
+      padding: 0;
+      background: transparent;
+    }
+
+    .chips{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 6px 2px;
+    }
+    .chip{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      cursor: pointer;
+      user-select: none;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .chip .dot{
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,.25);
+      background: var(--c, #ddd);
+    }
+    .chip.on{
+      border-color: rgba(15,23,42,.35);
+      box-shadow: 0 0 0 3px rgba(15,23,42,.08);
+      background: #fff;
+    }
+
+
+    .chipwrap{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chipdel{
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-weight: 900;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .chipdel:active{ transform: translateY(1px); }
+
+    .hint{
+      padding: 6px 8px 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .hint b{ color: var(--text); }
+
+    .grid-card{
+      margin-top: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .grid-scroll{
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      max-height: calc(100vh - 430px);
+    }
+
+    .grid{
+      display: grid;
+      grid-template-columns: var(--time-col) repeat(7, minmax(var(--grid-min-day), 1fr));
+      /* header + slots */
+      grid-auto-rows: var(--cell-h);
+      min-width: calc(var(--time-col) + 7 * var(--grid-min-day));
+    }
+    .th{
+      height: var(--header-h);
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #111827;
+      background: #fff;
+      border-bottom: 2px solid var(--border-2);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .th.timehead{
+      left: 0;
+      z-index: 7;
+      border-right: 2px solid var(--border-2);
+    }
+    .th:last-child{ border-right: none; }
+
+    .time{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #111827;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      border-right: 2px solid var(--border-2);
+      position: sticky;
+      left: 0;
+      z-index: 3;
+    }
+    .cell{
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background: #fff;
+      padding: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cell:last-child{ border-right: none; }
+
+    .cellbtn{
+      width: 100%;
+      height: 100%;
+      border: 2px solid rgba(15,23,42,.08); /* 더 선명한 테두리 */
+      border-radius: 16px; /* 블록 둥글게 */
+      padding: 8px;
+      background: transparent;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: none;
+    }
+    .cellbtn.filled{
+      border-color: rgba(15,23,42,.18);
+      box-shadow: 0 6px 16px rgba(15,23,42,.10);
+    }
+    .cellbtn.anchor{
+      outline: 3px solid rgba(17,24,39,.25);
+      outline-offset: 0px;
+    }
+    .cellbtn.conflict{
+      outline: 3px solid rgba(220,38,38,.55);
+      outline-offset: 0px;
+    }
+    .labels{
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      pointer-events: none;
+    }
+    .badge{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      max-width: 100%;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--badge-border);
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      font-weight: 900;
+      font-size: var(--badge-font);
+      line-height: 1;
+      box-shadow: 0 3px 12px rgba(15,23,42,.10);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge small{
+      font-size: 11px;
+      font-weight: 900;
+      color: rgba(15,23,42,.65);
+    }
+
+    .bottom{
+      margin-top: 12px;
+      display: grid;
+      gap: 12px;
+    }
+    .lists{
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    .listbox{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 12px;
+      min-width: 0;
+    }
+    .listbox h3{
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .entry{
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel-2);
+      margin-bottom: 8px;
+    }
+    .entry:last-child{ margin-bottom: 0; }
+    .entry .left{
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .entry .topline{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-weight: 900;
+      font-size: 13px;
+    }
+    .entry .dot{
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(15,23,42,.25);
+      background: var(--c, #ddd);
+      flex: 0 0 auto;
+    }
+    .entry .meta{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .entry .actions{
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .entry .actions button{
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-weight: 900;
+      font-size: 12px;
+      background: #fff;
+    }
+    .danger{
+      border-color: rgba(220,38,38,.35) !important;
+      color: var(--danger);
+    }
+
+    .hidden{ display: none !important; }
+    .pill{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--muted);
+      line-height: 1;
+    }
+    .pill.due{
+      border-color: rgba(220,38,38,.35);
+      color: var(--danger);
+      background: rgba(220,38,38,.06);
+    }
+    .pill.ok{
+      border-color: rgba(16,185,129,.35);
+      color: #047857;
+      background: rgba(16,185,129,.08);
+    }
+    .pill.wait{
+      border-color: rgba(245,158,11,.35);
+      color: #92400e;
+      background: rgba(245,158,11,.10);
+    }
+    .muted{ color: var(--muted); }
+    .kpis{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .kpi{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel-2);
+      font-weight: 900;
+      font-size: 12px;
+    }
+    .kpi b{ font-size: 13px; }
+
+    .two-col{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 980px){
+      .two-col{ grid-template-columns: 1fr; }
+    }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      background: rgba(17,24,39,.96);
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 13px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      max-width: calc(100vw - 24px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .toast.show{
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+    .toast button{
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.20);
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .locked .panel, .locked .chips{
+      opacity: .80;
+    }
+    .locked .panel input, .locked .panel select, .locked .panel button, .locked .chips{
+      /* 잠금 중에도 스크롤/보기는 가능하지만, 편집 버튼은 비활성화 */
+    }
+
+    @media (max-width: 980px){
+      .lists{ grid-template-columns: 1fr; }
+      .grid-scroll{ max-height: calc(100vh - 520px); }
+    }
+
+    @media print{
+      body{ background: #fff; }
+      header, .panel, .toast{ display: none !important; }
+      .wrap{ max-width: none; padding: 0; }
+      .grid-card{ border: none; box-shadow: none; }
+      .grid-scroll{ max-height: none; overflow: visible; }
+      .lists{ grid-template-columns: 1fr 1fr 1fr; }
+      .listbox{ box-shadow: none; }
+      .entry{ break-inside: avoid; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="titlebox">
+        <div class="title">정우 학원 스케줄</div>
+        <div class="subtitle" id="subtitle">09:00 ~ 22:00 · 정규반/내신반 비교</div>
+      </div>
+      <div class="head-actions">
+        <button id="lockBtn" type="button">🔓 잠금 해제</button>
+        <button id="printBtn" type="button">🖨️ 인쇄/PDF</button>
+      </div>
+    </header>
+
+    <section class="panel" id="controlPanel">
+      <div class="row">
+        <div class="label">메뉴</div>
+        <div class="field">
+          <div class="seg" id="tabSeg">
+            <button type="button" data-tab="timetable">시간표</button>
+            <button type="button" data-tab="payments">결제</button>
+            <button type="button" data-tab="makeup">보강</button>
+          </div>
+          <div class="kpis" id="kpiBar" style="margin-left:6px;"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label">학기</div>
+        <div class="field">
+          <select id="profileSelect"></select>
+          <button id="newProfileBtn" type="button">+ 새 학기</button>
+          <button id="renameProfileBtn" type="button">이름변경</button>
+          <button id="deleteProfileBtn" type="button" class="danger">삭제</button>
+        </div>
+      </div>
+
+      <div class="row timetable-only">
+        <div class="label">보기</div>
+        <div class="field">
+          <div class="seg" id="viewSeg">
+            <button type="button" data-view="compare">비교</button>
+            <button type="button" data-view="regular">정규반</button>
+            <button type="button" data-view="naesin">내신반</button>
+          </div>
+          <label class="toggle"><input id="preventOverlap" type="checkbox">겹침 방지</label>
+          <label class="toggle"><input id="autoColor" type="checkbox">과목 자동색</label>
+        </div>
+      </div>
+
+      <div class="row timetable-only">
+        <div class="label">편집</div>
+        <div class="field">
+          <div class="seg" id="planSeg">
+            <button type="button" data-plan="regular">정규반</button>
+            <button type="button" data-plan="naesin">내신반</button>
+          </div>
+          <div class="seg" id="toolSeg">
+            <button type="button" data-tool="paint">칠하기</button>
+            <button type="button" data-tool="erase">지우기</button>
+          </div>
+          <span class="hint" id="lockHint" style="padding:0; margin-left:6px;"></span>
+        </div>
+      </div>
+
+      <div class="row timetable-only">
+        <div class="label">과목/색상</div>
+        <div class="field" style="min-width:0;">
+          <input id="subjectInput" type="text" placeholder="과목명 입력 (예: 국어)" style="flex:1; min-width:220px;" />
+          <div class="palette" id="palette"></div>
+          <div class="colorpicker" title="색상 직접 선택"><input id="colorPicker" type="color" value="#1e88e5"></div>
+        </div>
+      </div>
+
+      <div class="chips timetable-only" id="subjectChips"></div>
+
+      <div class="hint timetable-only" id="hintLine">
+        <b>사용법:</b> 칸을 누르면 칠해집니다. 같은 요일에서 <b>시작칸 → 끝칸</b>으로 누르면 구간이 한 번에 채워집니다. (겹침 방지 ON이면 충돌은 자동 차단)
+      </div>
+    </section>
+
+    <!-- 결제 탭 -->
+    <section class="panel hidden" id="paymentsView">
+      <div class="row">
+        <div class="label">알림</div>
+        <div class="field">
+          <button id="notifPermBtn" type="button">🔔 알림 권한</button>
+          <button id="icsExportBtn" type="button">📅 캘린더 알림 추가(.ics)</button>
+          <span class="hint" id="notifHint" style="padding:0;"></span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="label">새 결제</div>
+        <div class="field" style="min-width:0;">
+          <input id="payName" type="text" placeholder="학원/수업명 (예: ○○수학)" style="flex:1; min-width:200px;" />
+          <input id="paySubject" type="text" placeholder="과목 (예: 수학)" style="width:160px;" />
+          <input id="payFee" type="number" inputmode="numeric" placeholder="금액" style="width:120px;" />
+          <select id="payDay" title="결제일">
+            <option value="">결제일(일)</option>
+          </select>
+          <select id="payRemind" title="알림">
+            <option value="3,0">알림: 3일전+당일</option>
+            <option value="7,3,0">알림: 7일전+3일전+당일</option>
+            <option value="1,0">알림: 1일전+당일</option>
+            <option value="0">알림: 당일만</option>
+            <option value="">알림 없음</option>
+          </select>
+          <input id="payTime" type="time" value="09:00" title="알림 시간" />
+          <button id="payAddBtn" type="button">+ 추가</button>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="listbox" style="margin-top:10px;">
+          <h3>이번달 결제</h3>
+          <div id="payListThis"></div>
+        </div>
+        <div class="listbox" style="margin-top:10px;">
+          <h3>다음 결제(예정)</h3>
+          <div id="payListNext"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 보강 탭 -->
+    <section class="panel hidden" id="makeupView">
+      <div class="row">
+        <div class="label">새 보강</div>
+        <div class="field" style="min-width:0;">
+          <select id="mkAcademy"></select>
+          <input id="mkSubject" type="text" placeholder="과목" style="width:140px;" />
+          <input id="mkDate" type="date" />
+          <input id="mkStart" type="time" value="19:00" />
+          <input id="mkEnd" type="time" value="21:00" />
+          <select id="mkStatus">
+            <option value="requested">요청됨(미확정)</option>
+            <option value="scheduled">확정됨(일정)</option>
+            <option value="done">완료</option>
+            <option value="canceled">취소</option>
+          </select>
+          <select id="mkRemindMin" title="알림">
+            <option value="60">알림: 1시간 전</option>
+            <option value="120">알림: 2시간 전</option>
+            <option value="1440">알림: 전날</option>
+            <option value="0">알림: 없음</option>
+          </select>
+          <button id="mkAddBtn" type="button">+ 추가</button>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="listbox" style="margin-top:10px;">
+          <h3>보강 대기함</h3>
+          <div id="mkListPending"></div>
+        </div>
+        <div class="listbox" style="margin-top:10px;">
+          <h3>보강 일정</h3>
+          <div id="mkListUpcoming"></div>
+        </div>
+      </div>
+      <div class="listbox" style="margin-top:12px;">
+        <h3>완료/취소</h3>
+        <div id="mkListDone"></div>
+      </div>
+    </section>
+
+    <section class="grid-card" id="timetableView">
+      <div class="grid-scroll" id="gridScroll">
+        <div class="grid" id="grid" aria-label="주간 시간표"></div>
+      </div>
+    </section>
+
+    <section class="bottom" id="timetableLists">
+      <div class="lists">
+        <div class="listbox">
+          <h3>정규반 시간표</h3>
+          <div id="listRegular"></div>
+        </div>
+        <div class="listbox">
+          <h3>내신반 시간표</h3>
+          <div id="listNaesin"></div>
+        </div>
+        <div class="listbox">
+          <h3>겹치는 시간(충돌)</h3>
+          <div id="listConflicts"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"><span id="toastText"></span> <button id="toastBtn" type="button" style="display:none;"></button></div>
+
+  <script>
+  (function(){
+    "use strict";
+
+    // ====== Constants ======
+    const START_MIN = 9 * 60;   // 09:00
+    const END_MIN   = 22 * 60;  // 22:00 (exclusive)
+    const dayNames = ["월","화","수","목","금","토","일"];
+
+    const PRESET = [
+      { key:"red",    label:"빨강",  value:"#e53935" },
+      { key:"orange", label:"주황",  value:"#fb8c00" },
+      { key:"yellow", label:"노랑",  value:"#fdd835" },
+      { key:"green",  label:"초록",  value:"#43a047" },
+      { key:"blue",   label:"파랑",  value:"#1e88e5" },
+      { key:"indigo", label:"남색",  value:"#3949ab" },
+      { key:"violet", label:"보라",  value:"#8e24aa" }
+    ];
+
+    // localStorage 키는 유지(기존 데이터 보존). 내부 버전만 v5로 확장.
+    const STORAGE_KEY = "jw-academy-schedule-v4";
+    const APP_VERSION = 5;
+
+    // ====== Utilities ======
+    const $ = (sel) => document.querySelector(sel);
+    const escapeHtml = (s) => (s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const pad2 = (n) => String(n).padStart(2,"0");
+    const minToTime = (m) => `${pad2(Math.floor(m/60))}:${pad2(m%60)}`;
+    const slotCount = (slotMin) => Math.floor((END_MIN - START_MIN) / slotMin);
+    const slotStartMin = (slotIndex, slotMin) => START_MIN + slotIndex * slotMin;
+    const slotKey = (day, slot) => `${day}-${slot}`;
+    const otherPlan = (plan) => plan === "regular" ? "naesin" : "regular";
+    const nowStamp = () => new Date().toISOString();
+
+    function uid(){
+      // short unique id
+      return Math.random().toString(36).slice(2,9) + "-" + Date.now().toString(36);
+    }
+
+    function hashToIndex(str, mod){
+      let h = 0;
+      for(let i=0;i<str.length;i++){
+        h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      }
+      return h % mod;
+    }
+
+    function normalizeSubject(s){
+      return (s||"").trim().replace(/\s+/g," ");
+    }
+
+    // 한글 IME 조합(입력 중) 값이 "과목"으로 저장되면서
+    // ㄱ/구/국/국ㅇ/수하 같은 중간값 칩이 생기는 문제 방지용 필터
+    function hasCompatJamo(s){
+      // 호환 자모(ㄱ-ㅎ, ㅏ-ㅣ)가 포함되면 조합 중간값일 확률이 매우 높음
+      return /[ㄱ-ㅎㅏ-ㅣ]/.test(s||"");
+    }
+
+    function isValidSubjectName(subject){
+      const s = normalizeSubject(subject);
+      if(!s) return false;
+      if(hasCompatJamo(s)) return false;
+      // 과목명은 보통 2글자 이상(국어/수학/영어/과학...).
+      // 1글자(국/수/영/ㅇ/ㅅ/...)는 조합 중간값일 가능성이 높아 표시/저장을 막는다.
+      if(s.length < 2) return false;
+      return true;
+    }
+
+    function filterCompleteSubjects(subjects){
+      const arr = Array.from(new Set((subjects||[]).map(normalizeSubject).filter(Boolean)));
+
+      // 1) 확실히 조합 중간값인 패턴 제거(자모 포함/너무 짧음)
+      let filtered = arr.filter(isValidSubjectName);
+
+      // 2) 받침이 빠진 조합 중간값 제거 (예: "수하" -> "수학")
+      //    NFD로 분해했을 때, 더 긴 과목명이 "짧은 과목명 + (받침 1글자)" 형태면
+      //    짧은 쪽은 조합 중간값으로 간주하고 숨긴다.
+      const nfdList = filtered.map(s => ({ s, nfd: s.normalize("NFD") }));
+      filtered = filtered.filter(s => {
+        const snfd = s.normalize("NFD");
+        return !nfdList.some(o => {
+          if(o.s === s) return false;
+          if(!o.nfd.startsWith(snfd)) return false;
+          if(o.nfd.length !== snfd.length + 1) return false;
+          const extra = o.nfd.slice(-1);
+          // 종성(받침) 자모 영역
+          return /[\u11A8-\u11FF]/.test(extra);
+        });
+      });
+
+      return filtered.sort((a,b) => a.localeCompare(b, "ko"));
+    }
+
+    // ====== Date/Money helpers (결제/보강) ======
+    function startOfDay(d){
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    function toYMD(d){
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    }
+    function parseYMD(s){
+      if(!s) return null;
+      const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(!m) return null;
+      const y = parseInt(m[1],10);
+      const mo = parseInt(m[2],10)-1;
+      const da = parseInt(m[3],10);
+      const d = new Date(y, mo, da);
+      if(d.getFullYear()!==y || d.getMonth()!==mo || d.getDate()!==da) return null;
+      return d;
+    }
+    function ymKey(d){
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+    }
+    function parseTimeHHMM(s, fallback="09:00"){
+      const v = (s || fallback || "09:00").trim();
+      const m = v.match(/^(\d{1,2}):(\d{2})$/);
+      if(!m) return {hh:9, mm:0};
+      let hh = Math.min(23, Math.max(0, parseInt(m[1],10)));
+      let mm = Math.min(59, Math.max(0, parseInt(m[2],10)));
+      return {hh, mm};
+    }
+    function dueDateForMonth(payDay, year, monthIndex0, timeStr="09:00"){
+      const day = Math.max(1, Math.min(31, parseInt(payDay,10) || 1));
+      const last = new Date(year, monthIndex0+1, 0).getDate();
+      const dd = Math.min(day, last);
+      const t = parseTimeHHMM(timeStr, "09:00");
+      return new Date(year, monthIndex0, dd, t.hh, t.mm, 0, 0);
+    }
+    function daysDiff(a, b){
+      // a,b: Date -> (b-a) in days (midnight 기준)
+      const da = startOfDay(a).getTime();
+      const db = startOfDay(b).getTime();
+      return Math.round((db - da) / 86400000);
+    }
+    function ddayLabel(diffDays){
+      if(diffDays === 0) return "D-DAY";
+      if(diffDays > 0) return `D-${diffDays}`;
+      return `연체 ${Math.abs(diffDays)}일`;
+    }
+    function fmtMoney(n){
+      const v = Number(n);
+      if(!Number.isFinite(v)) return "-";
+      return v.toLocaleString("ko-KR");
+    }
+    function safeInt(v, fallback=null){
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    // ====== State ======
+    const defaultProfile = () => ({
+      id: uid(),
+      name: "1학기",
+      regular: {},   // slotKey -> {subject, color}
+      naesin: {},    // slotKey -> {subject, color}
+      subjectColors: {}, // subject -> color
+      // 결제/보강 관리
+      academies: [], // [{id,name,subject,fee,payDay,remindDays[],remindTime,createdAt,updatedAt}]
+      paymentHistory: {}, // academyId -> {"YYYY-MM": {paidAt, amount}}
+      makeups: [], // [{id, academyId, subject, date, start, end, status, remindMin, memo, createdAt, updatedAt}]
+      updatedAt: nowStamp()
+    });
+
+    const defaultState = () => ({
+      version: APP_VERSION,
+      profiles: [ defaultProfile() ],
+      activeProfileId: null,
+      settings: {
+        slotMinutes: 60,
+        tab: "timetable", // timetable | payments | makeup
+        viewMode: "compare",   // compare | regular | naesin
+        activePlan: "regular", // regular | naesin
+        tool: "paint",         // paint | erase
+        preventOverlap: true,
+        autoColor: true,
+        locked: false
+      },
+      ui: {
+        subject: "",
+        color: PRESET[4].value,
+        anchor: null // {day, slot} for range fill
+      },
+      meta: {
+        // 앱이 켜져있는 동안의 "로컬 알림" 중복 방지
+        fired: {} // key -> iso timestamp
+      }
+    });
+
+    let state = loadState();
+    if(!state.activeProfileId){
+      state.activeProfileId = state.profiles[0].id;
+    }
+
+    // ====== DOM ======
+    const subtitleEl = $("#subtitle");
+    const lockBtn = $("#lockBtn");
+    const printBtn = $("#printBtn");
+
+    const profileSelect = $("#profileSelect");
+    const newProfileBtn = $("#newProfileBtn");
+    const renameProfileBtn = $("#renameProfileBtn");
+    const deleteProfileBtn = $("#deleteProfileBtn");
+
+    const tabSeg = $("#tabSeg");
+    const kpiBar = $("#kpiBar");
+
+    const paymentsView = $("#paymentsView");
+    const makeupView = $("#makeupView");
+    const timetableView = $("#timetableView");
+    const timetableLists = $("#timetableLists");
+
+    // payments
+    const notifPermBtn = $("#notifPermBtn");
+    const icsExportBtn = $("#icsExportBtn");
+    const notifHint = $("#notifHint");
+    const payName = $("#payName");
+    const paySubject = $("#paySubject");
+    const payFee = $("#payFee");
+    const payDay = $("#payDay");
+    const payRemind = $("#payRemind");
+    const payTime = $("#payTime");
+    const payAddBtn = $("#payAddBtn");
+    const payListThis = $("#payListThis");
+    const payListNext = $("#payListNext");
+
+    // makeup
+    const mkAcademy = $("#mkAcademy");
+    const mkSubject = $("#mkSubject");
+    const mkDate = $("#mkDate");
+    const mkStart = $("#mkStart");
+    const mkEnd = $("#mkEnd");
+    const mkStatus = $("#mkStatus");
+    const mkRemindMin = $("#mkRemindMin");
+    const mkAddBtn = $("#mkAddBtn");
+    const mkListPending = $("#mkListPending");
+    const mkListUpcoming = $("#mkListUpcoming");
+    const mkListDone = $("#mkListDone");
+
+    const viewSeg = $("#viewSeg");
+    const planSeg = $("#planSeg");
+    const toolSeg = $("#toolSeg");
+
+    const preventOverlapCb = $("#preventOverlap");
+    const autoColorCb = $("#autoColor");
+
+    const subjectInput = $("#subjectInput");
+    const paletteEl = $("#palette");
+    const colorPicker = $("#colorPicker");
+
+    const subjectChips = $("#subjectChips");
+    const lockHint = $("#lockHint");
+
+    const gridEl = $("#grid");
+    const listRegular = $("#listRegular");
+    const listNaesin = $("#listNaesin");
+    const listConflicts = $("#listConflicts");
+
+    const toastEl = $("#toast");
+    const toastText = $("#toastText");
+    const toastBtn = $("#toastBtn");
+
+    const cellMap = new Map(); // slotKey -> button element
+
+    // subject input IME composing flag (한글 조합 중)
+    let subjectComposing = false;
+
+    // ====== Storage ======
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return defaultState();
+        const data = JSON.parse(raw);
+        // minimal migration
+        if(!data || typeof data !== "object") return defaultState();
+        if(!Array.isArray(data.profiles) || data.profiles.length === 0) return defaultState();
+        if(!data.settings) data.settings = defaultState().settings;
+        if(!data.ui) data.ui = defaultState().ui;
+        if(!data.meta) data.meta = defaultState().meta;
+        if(!data.meta.fired) data.meta.fired = {};
+
+        // 새 탭/관리 기능 기본값
+        if(!data.settings.tab) data.settings.tab = "timetable";
+
+        data.version = APP_VERSION;
+        // ensure fields
+        for(const p of data.profiles){
+          p.regular = p.regular || {};
+          p.naesin = p.naesin || {};
+          p.subjectColors = p.subjectColors || {};
+          p.academies = Array.isArray(p.academies) ? p.academies : [];
+          p.paymentHistory = p.paymentHistory && typeof p.paymentHistory === "object" ? p.paymentHistory : {};
+          p.makeups = Array.isArray(p.makeups) ? p.makeups : [];
+          p.updatedAt = p.updatedAt || nowStamp();
+          if(!p.id) p.id = uid();
+          if(!p.name) p.name = "학기";
+        }
+        if(!data.activeProfileId) data.activeProfileId = data.profiles[0].id;
+        return data;
+      }catch(e){
+        console.warn("loadState failed", e);
+        return defaultState();
+      }
+    }
+
+    function saveState(){
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }catch(e){
+        console.warn("saveState failed", e);
+        showToast("저장 실패: 브라우저 저장공간을 확인해주세요.");
+      }
+    }
+
+    function activeProfile(){
+      return state.profiles.find(p => p.id === state.activeProfileId) || state.profiles[0];
+    }
+
+    function planMap(plan){
+      const p = activeProfile();
+      return plan === "regular" ? p.regular : p.naesin;
+    }
+
+    function updateProfileStamp(){
+      const p = activeProfile();
+      p.updatedAt = nowStamp();
+    }
+
+    // ====== Payments / Makeups (profile scoped) ======
+    function academies(){
+      const p = activeProfile();
+      p.academies = Array.isArray(p.academies) ? p.academies : [];
+      return p.academies;
+    }
+    function paymentHistory(){
+      const p = activeProfile();
+      p.paymentHistory = p.paymentHistory && typeof p.paymentHistory === "object" ? p.paymentHistory : {};
+      return p.paymentHistory;
+    }
+    function makeups(){
+      const p = activeProfile();
+      p.makeups = Array.isArray(p.makeups) ? p.makeups : [];
+      return p.makeups;
+    }
+
+    function findAcademyById(id){
+      return academies().find(a => a.id === id) || null;
+    }
+
+    function isPaid(academyId, ym){
+      const hist = paymentHistory();
+      return !!(hist[academyId] && hist[academyId][ym]);
+    }
+    function markPaid(academyId, ym, amount){
+      const hist = paymentHistory();
+      hist[academyId] = hist[academyId] || {};
+      hist[academyId][ym] = { paidAt: nowStamp(), amount: Number(amount) };
+      updateProfileStamp();
+      saveState();
+    }
+    function unmarkPaid(academyId, ym){
+      const hist = paymentHistory();
+      if(hist[academyId] && hist[academyId][ym]){
+        delete hist[academyId][ym];
+        updateProfileStamp();
+        saveState();
+      }
+    }
+
+    function nextUnpaidDue(academy, refDate=new Date()){
+      if(!academy || !academy.payDay) return null;
+      const hist = paymentHistory()[academy.id] || {};
+      let y = refDate.getFullYear();
+      let m = refDate.getMonth();
+      for(let i=0;i<24;i++){
+        const due = dueDateForMonth(academy.payDay, y, m, academy.remindTime || "09:00");
+        const ym = ymKey(due);
+        if(!hist[ym]){
+          return { due, ym };
+        }
+        m += 1;
+        if(m > 11){ m = 0; y += 1; }
+      }
+      return null;
+    }
+
+    function makeupStartDate(mk){
+      if(!mk || !mk.date) return null;
+      const d = parseYMD(mk.date);
+      if(!d) return null;
+      const t = parseTimeHHMM(mk.start || "00:00", "00:00");
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), t.hh, t.mm, 0, 0);
+    }
+
+    // ====== Toast ======
+    let toastTimer = null;
+    function showToast(msg, actionText=null, actionFn=null){
+      toastText.textContent = msg;
+      if(actionText && actionFn){
+        toastBtn.style.display = "";
+        toastBtn.textContent = actionText;
+        toastBtn.onclick = () => { actionFn(); hideToast(); };
+      }else{
+        toastBtn.style.display = "none";
+        toastBtn.onclick = null;
+      }
+      toastEl.classList.add("show");
+      if(toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(hideToast, 2600);
+    }
+    function hideToast(){
+      toastEl.classList.remove("show");
+    }
+
+    // ====== Color helpers ======
+    function getSubjectColor(subject){
+      const p = activeProfile();
+      const map = p.subjectColors || {};
+      const subj = normalizeSubject(subject);
+      if(map[subj]) return map[subj];
+      // 구버전 데이터(공백 포함 등) 호환
+      if(subject && subject !== subj && map[subject]) return map[subject];
+      return null;
+    }
+    function setSubjectColor(subject, color){
+      const p = activeProfile();
+      const subj = normalizeSubject(subject);
+      // 조합 중간값(ㄱ/구/국ㅇ/...)은 저장하지 않음
+      if(!isValidSubjectName(subj)) return;
+      p.subjectColors = p.subjectColors || {};
+      p.subjectColors[subj] = color;
+      updateProfileStamp();
+      saveState();
+    }
+    function autoPickColor(subject){
+      const idx = hashToIndex(subject, PRESET.length);
+      return PRESET[idx].value;
+    }
+
+    // ====== Render controls ======
+    function syncControls(){
+      const p = activeProfile();
+
+      // tab
+      const tab = state.settings.tab || "timetable";
+      for(const btn of tabSeg.querySelectorAll("button")){
+        btn.classList.toggle("on", btn.dataset.tab === tab);
+      }
+
+      const hideTimetable = tab !== "timetable";
+      for(const el of document.querySelectorAll(".timetable-only")){
+        el.classList.toggle("hidden", hideTimetable);
+      }
+      timetableView.classList.toggle("hidden", hideTimetable);
+      timetableLists.classList.toggle("hidden", hideTimetable);
+      paymentsView.classList.toggle("hidden", tab !== "payments");
+      makeupView.classList.toggle("hidden", tab !== "makeup");
+      printBtn.disabled = tab !== "timetable";
+
+      // subtitle
+      if(tab === "timetable"){
+        const vm = state.settings.viewMode;
+        const vmText = vm === "compare" ? "정규반/내신반 비교" : (vm === "regular" ? "정규반 보기" : "내신반 보기");
+        subtitleEl.textContent = `09:00 ~ 22:00 · ${p.name} · ${vmText}`;
+      }else if(tab === "payments"){
+        subtitleEl.textContent = `${p.name} · 결제/알림 관리`;
+      }else if(tab === "makeup"){
+        subtitleEl.textContent = `${p.name} · 보강 관리`;
+      }else{
+        subtitleEl.textContent = `${p.name}`;
+      }
+
+      // lock
+      document.body.classList.toggle("locked", !!state.settings.locked);
+      lockBtn.textContent = state.settings.locked ? "🔒 잠금" : "🔓 잠금 해제";
+      lockHint.textContent = state.settings.locked ? "잠금 중: 편집 불가" : "";
+
+      // profile select
+      profileSelect.innerHTML = "";
+      for(const prof of state.profiles){
+        const opt = document.createElement("option");
+        opt.value = prof.id;
+        opt.textContent = prof.name;
+        if(prof.id === state.activeProfileId) opt.selected = true;
+        profileSelect.appendChild(opt);
+      }
+
+      // segments
+      for(const btn of viewSeg.querySelectorAll("button")){
+        btn.classList.toggle("on", btn.dataset.view === state.settings.viewMode);
+      }
+      for(const btn of planSeg.querySelectorAll("button")){
+        btn.classList.toggle("on", btn.dataset.plan === state.settings.activePlan);
+      }
+      for(const btn of toolSeg.querySelectorAll("button")){
+        btn.classList.toggle("on", btn.dataset.tool === state.settings.tool);
+      }
+
+      preventOverlapCb.checked = !!state.settings.preventOverlap;
+      autoColorCb.checked = !!state.settings.autoColor;
+
+      // inputs
+      subjectInput.value = state.ui.subject;
+      colorPicker.value = state.ui.color;
+
+      // disable while locked (keep print/lock available)
+      const disabled = !!state.settings.locked;
+      for(const el of [
+        profileSelect, newProfileBtn, renameProfileBtn, deleteProfileBtn,
+        ...viewSeg.querySelectorAll("button"),
+        ...planSeg.querySelectorAll("button"),
+        ...toolSeg.querySelectorAll("button"),
+        preventOverlapCb, autoColorCb,
+        subjectInput, colorPicker,
+        ...paletteEl.querySelectorAll("button"),
+      ]){
+        if(!el) continue;
+        // allow view change even when locked? user said click 이동 불편, lock for viewing. We'll disable most edits, but allow view change.
+      }
+
+      // In locked mode: disable editing-related controls only, allow view change + print + lock
+      const editDisable = (el) => { if(el){ el.disabled = disabled; } };
+      editDisable(profileSelect);
+      editDisable(newProfileBtn);
+      editDisable(renameProfileBtn);
+      editDisable(deleteProfileBtn);
+      // allow viewSeg even locked for viewing
+      for(const b of planSeg.querySelectorAll("button")) b.disabled = disabled;
+      for(const b of toolSeg.querySelectorAll("button")) b.disabled = disabled;
+      preventOverlapCb.disabled = disabled;
+      autoColorCb.disabled = disabled;
+      subjectInput.disabled = disabled;
+      colorPicker.disabled = disabled;
+      for(const b of paletteEl.querySelectorAll("button")) b.disabled = disabled;
+
+      // 결제/보강 입력은 잠금 시 비활성화
+      for(const el of [
+        payName, paySubject, payFee, payDay, payRemind, payTime, payAddBtn,
+        mkAcademy, mkSubject, mkDate, mkStart, mkEnd, mkStatus, mkRemindMin, mkAddBtn
+      ]){
+        if(el) el.disabled = disabled;
+      }
+
+      // chips: disable in lock
+      for(const c of subjectChips.querySelectorAll("button")) c.disabled = disabled;
+    }
+
+    function updateNotifHint(){
+      if(!notifHint) return;
+      if(!("Notification" in window)){
+        notifHint.textContent = "이 브라우저는 알림을 지원하지 않습니다.";
+        return;
+      }
+      const p = Notification.permission;
+      if(p === "granted"){
+        notifHint.textContent = "알림: 허용됨 (앱을 켜두면 결제/보강 알림을 띄웁니다)";
+      }else if(p === "denied"){
+        notifHint.textContent = "알림: 차단됨 (브라우저/설정에서 허용으로 변경 필요)";
+      }else{
+        notifHint.textContent = "알림: 미설정 (버튼을 눌러 허용해주세요)";
+      }
+    }
+
+    function renderKpiBar(){
+      if(!kpiBar) return;
+      const p = activeProfile();
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth();
+
+      // unpaid this month
+      let unpaidThis = 0;
+      let nearest = null; // {due, label}
+      for(const a of academies()){
+        if(!a.payDay) continue;
+        const dueThis = dueDateForMonth(a.payDay, y, m, a.remindTime || "09:00");
+        const ym = ymKey(dueThis);
+        const paid = isPaid(a.id, ym);
+        if(!paid) unpaidThis++;
+
+        const next = nextUnpaidDue(a, now);
+        if(next){
+          if(!nearest || next.due < nearest.due){
+            nearest = { due: next.due };
+          }
+        }
+      }
+
+      // makeups
+      const mks = makeups();
+      const pending = mks.filter(x => (x.status === "requested") || (!x.date && x.status !== "done" && x.status !== "canceled")).length;
+      const upcoming = mks.filter(x => {
+        if(x.status !== "scheduled") return false;
+        const sd = makeupStartDate(x);
+        if(!sd) return true;
+        return sd >= startOfDay(now);
+      }).length;
+
+      const parts = [];
+      parts.push(`<span class="kpi">💳 미결제 <b>${unpaidThis}</b></span>`);
+      if(nearest){
+        const dd = ddayLabel(daysDiff(now, nearest.due));
+        parts.push(`<span class="kpi">📅 다음 결제 <b>${escapeHtml(dd)}</b></span>`);
+      }
+      if(pending > 0){
+        parts.push(`<span class="kpi">🧩 보강대기 <b>${pending}</b></span>`);
+      }else{
+        parts.push(`<span class="kpi">🧩 보강 <b>${upcoming}</b></span>`);
+      }
+      kpiBar.innerHTML = parts.join("");
+    }
+
+    // ====== Build palette + chips ======
+    function buildPalette(){
+      paletteEl.innerHTML = "";
+      for(const c of PRESET){
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "colorbtn";
+        b.title = c.label;
+        b.style.background = c.value;
+        b.dataset.color = c.value;
+        b.addEventListener("click", () => {
+          if(state.settings.locked) return;
+          state.ui.color = c.value;
+          colorPicker.value = c.value;
+          // if subject exists, treat manual pick as subject color assignment
+          const subj = normalizeSubject(state.ui.subject);
+          if(isValidSubjectName(subj)){
+            setSubjectColor(subj, c.value);
+            showToast(`"${subj}" 색상 저장`);
+          }
+          saveState();
+          renderAll();
+        });
+        paletteEl.appendChild(b);
+      }
+    }
+
+    function collectAllSubjects(){
+      const p = activeProfile();
+      const set = new Set();
+      for(const k in p.regular){
+        const s = p.regular[k]?.subject;
+        if(s) set.add(normalizeSubject(s));
+      }
+      for(const k in p.naesin){
+        const s = p.naesin[k]?.subject;
+        if(s) set.add(normalizeSubject(s));
+      }
+      // include subjectColors keys
+      for(const s in (p.subjectColors||{})){
+        set.add(normalizeSubject(s));
+      }
+      return Array.from(set).filter(Boolean);
+    }
+
+    function collectKnownSubjects(){
+      // "완성된 과목명"만 노출
+      return filterCompleteSubjects(collectAllSubjects());
+    }
+
+    function collectHiddenSubjects(){
+      const all = collectAllSubjects();
+      const visible = new Set(filterCompleteSubjects(all));
+      return all.filter(s => s && !visible.has(s)).sort((a,b) => a.localeCompare(b, "ko"));
+    }
+
+    function _deleteSubjectFromProfile(p, subject){
+      const subj = normalizeSubject(subject);
+      let removedRegular = 0;
+      let removedNaesin = 0;
+      let removedColor = false;
+
+      for(const k of Object.keys(p.regular || {})){
+        const item = p.regular[k];
+        if(item && normalizeSubject(item.subject) === subj){
+          delete p.regular[k];
+          removedRegular++;
+        }
+      }
+      for(const k of Object.keys(p.naesin || {})){
+        const item = p.naesin[k];
+        if(item && normalizeSubject(item.subject) === subj){
+          delete p.naesin[k];
+          removedNaesin++;
+        }
+      }
+      if(p.subjectColors){
+        for(const k of Object.keys(p.subjectColors)){
+          if(normalizeSubject(k) === subj){
+            delete p.subjectColors[k];
+            removedColor = true;
+          }
+        }
+      }
+      return { removedRegular, removedNaesin, removedColor };
+    }
+
+    function deleteSubjectEverywhere(subject, opts={render:true}){
+      const subj = normalizeSubject(subject);
+      if(!subj) return { removedRegular:0, removedNaesin:0, removedColor:false };
+      const p = activeProfile();
+      const res = _deleteSubjectFromProfile(p, subj);
+
+      // clear current selection if needed
+      if(normalizeSubject(state.ui.subject) === subj){
+        state.ui.subject = "";
+        subjectInput.value = "";
+      }
+      state.ui.anchor = null;
+
+      if(opts.render){
+        updateProfileStamp();
+        saveState();
+        renderAll();
+      }
+      return res;
+    }
+
+    function cleanupHiddenSubjects(){
+      const hidden = collectHiddenSubjects();
+      if(hidden.length === 0) return;
+      const preview = hidden.slice(0, 6).join(", ") + (hidden.length > 6 ? " …" : "");
+      const ok = confirm(`미완성/오타 과목 ${hidden.length}개를 정리할까요?
+(${preview})
+
+※ 이 과목으로 칠해진 칸도 함께 지워집니다.`);
+      if(!ok) return;
+
+      const p = activeProfile();
+      let totalCells = 0;
+      let clearedSelection = false;
+
+      for(const s of hidden){
+        const subj = normalizeSubject(s);
+        const res = _deleteSubjectFromProfile(p, subj);
+        totalCells += (res.removedRegular + res.removedNaesin);
+        if(normalizeSubject(state.ui.subject) === subj){
+          clearedSelection = true;
+        }
+      }
+
+      if(clearedSelection){
+        state.ui.subject = "";
+        subjectInput.value = "";
+      }
+
+      state.ui.anchor = null;
+      updateProfileStamp();
+      saveState();
+      renderAll();
+      showToast(totalCells > 0 ? `미완성 과목 정리 완료 (${totalCells}칸)` : "미완성 과목 정리 완료");
+    }
+
+    function buildSubjectChips(){
+      const subjects = collectKnownSubjects();
+      const hidden = collectHiddenSubjects();
+
+      subjectChips.innerHTML = "";
+      if(subjects.length === 0 && hidden.length === 0){
+        return;
+      }
+
+      for(const subj of subjects){
+        const wrap = document.createElement("div");
+        wrap.className = "chipwrap";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip";
+        btn.dataset.subject = subj;
+        btn.innerHTML = `<span class="dot" style="--c:${escapeHtml(getSubjectColor(subj) || autoPickColor(subj))}"></span>${escapeHtml(subj)}`;
+        btn.addEventListener("click", () => {
+          if(state.settings.locked) return;
+          state.ui.subject = subj;
+          // auto color
+          if(state.settings.autoColor){
+            state.ui.color = getSubjectColor(subj) || autoPickColor(subj);
+            colorPicker.value = state.ui.color;
+          }
+          state.ui.anchor = null;
+          saveState();
+          renderAll();
+        });
+        if(normalizeSubject(state.ui.subject) === subj){
+          btn.classList.add("on");
+        }
+
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "chipdel danger";
+        del.textContent = "×";
+        del.title = "과목 삭제";
+        del.setAttribute("aria-label", `과목 삭제: ${subj}`);
+        del.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          if(state.settings.locked) return;
+          const ok = confirm(`"${subj}" 과목을 삭제할까요?
+
+※ 이 과목으로 칠해진 칸도 함께 지워집니다.`);
+          if(!ok) return;
+          const res = deleteSubjectEverywhere(subj, {render:true});
+          const total = res.removedRegular + res.removedNaesin;
+          showToast(total > 0 ? `"${subj}" 삭제 (${total}칸)` : `"${subj}" 삭제`);
+        });
+
+        wrap.appendChild(btn);
+        wrap.appendChild(del);
+        subjectChips.appendChild(wrap);
+      }
+
+      // 숨겨진(미완성/오타) 과목이 있으면 정리 버튼만 노출
+      if(hidden.length > 0){
+        const cleanBtn = document.createElement("button");
+        cleanBtn.type = "button";
+        cleanBtn.className = "chip";
+        cleanBtn.textContent = `🧹 미완성 ${hidden.length}개 정리`;
+        cleanBtn.addEventListener("click", () => {
+          if(state.settings.locked) return;
+          cleanupHiddenSubjects();
+        });
+        subjectChips.appendChild(cleanBtn);
+      }
+    }
+
+    // ====== Grid build + render ======
+    function buildGridSkeleton(){
+      cellMap.clear();
+      gridEl.innerHTML = "";
+      const slotMin = state.settings.slotMinutes;
+      const slots = slotCount(slotMin);
+
+      // Set grid rows: header row separate height
+      // We'll implement header as separate elements with sticky top.
+      // With grid-auto-rows same, we emulate header height by giving .th height var(--header-h) and align self.
+      // Build header row
+      const timeHead = document.createElement("div");
+      timeHead.className = "th timehead";
+      timeHead.textContent = "시간";
+      gridEl.appendChild(timeHead);
+
+      for(let d=0; d<7; d++){
+        const th = document.createElement("div");
+        th.className = "th";
+        th.textContent = dayNames[d];
+        gridEl.appendChild(th);
+      }
+
+      // Rows
+      for(let s=0; s<slots; s++){
+        const t = document.createElement("div");
+        t.className = "time";
+        t.textContent = minToTime(slotStartMin(s, slotMin));
+        gridEl.appendChild(t);
+
+        for(let d=0; d<7; d++){
+          const wrapper = document.createElement("div");
+          wrapper.className = "cell";
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "cellbtn";
+          btn.dataset.day = String(d);
+          btn.dataset.slot = String(s);
+          btn.addEventListener("click", onCellClick);
+          // prevent persistent focus that can cause '이동' 느낌
+          btn.addEventListener("mouseup", () => btn.blur());
+          btn.addEventListener("touchend", () => btn.blur());
+          wrapper.appendChild(btn);
+          gridEl.appendChild(wrapper);
+
+          cellMap.set(slotKey(d,s), btn);
+        }
+      }
+    }
+
+    function computeRunStart(plan, d, s, map){
+      const slotMin = state.settings.slotMinutes;
+      const k = slotKey(d,s);
+      const cur = map[k];
+      if(!cur) return false;
+      if(s === 0) return true;
+      const prev = map[slotKey(d, s-1)];
+      if(!prev) return true;
+      return !(prev.subject === cur.subject && prev.color === cur.color);
+    }
+
+    function updateCell(d, s){
+      const k = slotKey(d,s);
+      const btn = cellMap.get(k);
+      if(!btn) return;
+
+      const p = activeProfile();
+      const reg = p.regular[k] || null;
+      const nae = p.naesin[k] || null;
+
+      const conflict = !!(reg && nae);
+      const vm = state.settings.viewMode;
+
+      // background
+      let bg = "";
+      if(vm === "compare"){
+        if(reg && nae){
+          bg = `linear-gradient(135deg, ${reg.color} 0%, ${reg.color} 49%, ${nae.color} 51%, ${nae.color} 100%)`;
+        }else if(reg){
+          bg = reg.color;
+        }else if(nae){
+          bg = nae.color;
+        }
+      }else if(vm === "regular"){
+        if(reg) bg = reg.color;
+      }else if(vm === "naesin"){
+        if(nae) bg = nae.color;
+      }
+
+      btn.style.background = bg ? bg : "transparent";
+      btn.classList.toggle("filled", !!bg);
+      btn.classList.toggle("conflict", conflict);
+
+      // anchor highlight
+      const a = state.ui.anchor;
+      btn.classList.toggle("anchor", !!(a && a.day === d && a.slot === s));
+
+      // labels
+      let labelsHtml = "";
+      if(vm === "compare"){
+        if(reg && computeRunStart("regular", d, s, p.regular)){
+          labelsHtml += `<span class="badge"><small>정</small> ${escapeHtml(reg.subject)}</span>`;
+        }
+        if(nae && computeRunStart("naesin", d, s, p.naesin)){
+          labelsHtml += `<span class="badge"><small>내</small> ${escapeHtml(nae.subject)}</span>`;
+        }
+      }else if(vm === "regular"){
+        if(reg && computeRunStart("regular", d, s, p.regular)){
+          labelsHtml = `<span class="badge">${escapeHtml(reg.subject)}</span>`;
+        }
+        // if conflict exists, show tiny warning badge on run start maybe
+        if(conflict && (!labelsHtml)){
+          // if label hidden due to run continuation, still show subtle dot? ignore
+        }
+      }else if(vm === "naesin"){
+        if(nae && computeRunStart("naesin", d, s, p.naesin)){
+          labelsHtml = `<span class="badge">${escapeHtml(nae.subject)}</span>`;
+        }
+      }
+
+      if(labelsHtml){
+        btn.innerHTML = `<div class="labels">${labelsHtml}</div>`;
+      }else{
+        btn.innerHTML = "";
+      }
+
+      // title tooltip
+      const slotMin = state.settings.slotMinutes;
+      const start = minToTime(slotStartMin(s, slotMin));
+      const end = minToTime(slotStartMin(s+1, slotMin));
+      const day = dayNames[d];
+      let tip = `${day} ${start}~${end}`;
+      if(reg) tip += ` · 정:${reg.subject}`;
+      if(nae) tip += ` · 내:${nae.subject}`;
+      if(conflict) tip += " · ⚠️겹침";
+      btn.title = tip;
+      btn.setAttribute("aria-label", tip);
+    }
+
+    function renderGrid(){
+      // ensure skeleton built
+      if(cellMap.size === 0){
+        buildGridSkeleton();
+      }
+      const slotMin = state.settings.slotMinutes;
+      const slots = slotCount(slotMin);
+      for(let s=0; s<slots; s++){
+        for(let d=0; d<7; d++){
+          updateCell(d,s);
+        }
+      }
+    }
+
+    // ====== Editing ======
+    function ensureSubjectReady(){
+      if(subjectComposing){
+        showToast("과목명을 입력 중입니다. 입력을 완료한 뒤 선택하세요.");
+        return null;
+      }
+      const subj = normalizeSubject(state.ui.subject);
+      if(!isValidSubjectName(subj)){
+        showToast("과목명을 완성해서 입력하세요. (예: 국어)");
+        return null;
+      }
+      // apply auto color mapping
+      if(state.settings.autoColor){
+        const saved = getSubjectColor(subj);
+        const picked = saved || autoPickColor(subj);
+        state.ui.color = picked;
+        colorPicker.value = picked;
+        if(!saved){
+          setSubjectColor(subj, picked);
+        }
+      }
+      return subj;
+    }
+
+    function setSlot(plan, d, s, subject, color){
+      const k = slotKey(d,s);
+      const map = planMap(plan);
+      map[k] = { subject, color };
+    }
+
+    function clearSlot(plan, d, s){
+      const k = slotKey(d,s);
+      const map = planMap(plan);
+      if(map[k]) delete map[k];
+    }
+
+    function applyPaintRange(plan, d, s1, s2, subject, color){
+      const a = Math.min(s1,s2);
+      const b = Math.max(s1,s2);
+      const other = otherPlan(plan);
+      const otherMap = planMap(other);
+      const thisMap = planMap(plan);
+
+      let blocked = 0;
+      let painted = 0;
+
+      for(let s=a; s<=b; s++){
+        const k = slotKey(d,s);
+        if(state.settings.preventOverlap && otherMap[k]){
+          blocked++;
+          continue;
+        }
+        thisMap[k] = { subject, color };
+        painted++;
+      }
+      return {painted, blocked};
+    }
+
+    function applyEraseRange(plan, d, s1, s2){
+      const a = Math.min(s1,s2);
+      const b = Math.max(s1,s2);
+      const map = planMap(plan);
+      let erased = 0;
+      for(let s=a; s<=b; s++){
+        const k = slotKey(d,s);
+        if(map[k]){
+          delete map[k];
+          erased++;
+        }
+      }
+      return erased;
+    }
+
+    function onCellClick(ev){
+      if(state.settings.locked){
+        // 보기 전용: 클릭해도 아무것도 안 함 (이동/키보드 등 방지)
+        state.ui.anchor = null;
+        renderAll();
+        return;
+      }
+      const btn = ev.currentTarget;
+      const d = parseInt(btn.dataset.day, 10);
+      const s = parseInt(btn.dataset.slot, 10);
+      const plan = state.settings.activePlan;
+      const tool = state.settings.tool;
+
+      if(tool === "erase"){
+        // 지우기도: 같은 요일에서 시작칸 → 끝칸으로 범위 삭제
+        if(state.ui.anchor && state.ui.anchor.day === d){
+          const erased = applyEraseRange(plan, d, state.ui.anchor.slot, s);
+          state.ui.anchor = null;
+          updateProfileStamp();
+          saveState();
+          showToast(erased > 0 ? `삭제 ${erased}칸` : "삭제할 칸이 없습니다");
+          renderAll();
+          return;
+        }
+
+        // anchor 설정 + 현재 칸 지우기
+        state.ui.anchor = { day: d, slot: s };
+        clearSlot(plan, d, s);
+        updateProfileStamp();
+        saveState();
+        renderAll();
+        return;
+      }
+
+      // paint
+      const subject = ensureSubjectReady();
+      if(!subject) return;
+
+      const color = state.ui.color;
+
+      // first click sets anchor; second click fills range (same day)
+      if(state.ui.anchor && state.ui.anchor.day === d){
+        const res = applyPaintRange(plan, d, state.ui.anchor.slot, s, subject, color);
+        state.ui.anchor = null;
+        updateProfileStamp();
+        saveState();
+        if(res.blocked > 0 && res.painted === 0){
+          showToast(`겹침으로 차단됨 (${res.blocked}칸)`);
+        }else if(res.blocked > 0){
+          showToast(`채움 ${res.painted}칸 · 겹침 차단 ${res.blocked}칸`);
+        }else{
+          showToast(`채움 ${res.painted}칸`);
+        }
+        renderAll();
+        return;
+      }
+
+      // set anchor and paint one cell immediately
+      state.ui.anchor = { day: d, slot: s };
+      // paint this cell (respect overlap rule)
+      const other = otherPlan(plan);
+      const otherMap = planMap(other);
+      if(state.settings.preventOverlap && otherMap[slotKey(d,s)]){
+        showToast("겹치는 시간이라 채울 수 없습니다.");
+        // anchor stays? better clear to avoid confusion
+        state.ui.anchor = null;
+        renderAll();
+        return;
+      }
+      setSlot(plan, d, s, subject, color);
+      updateProfileStamp();
+      saveState();
+      renderAll();
+    }
+
+    // ====== Lists / Conflicts ======
+    function buildEntriesForPlan(map){
+      const slotMin = state.settings.slotMinutes;
+      const slots = slotCount(slotMin);
+      const entries = [];
+      for(let d=0; d<7; d++){
+        let s=0;
+        while(s<slots){
+          const item = map[slotKey(d,s)];
+          if(!item){ s++; continue; }
+          const start = s;
+          let end = s+1;
+          while(end<slots){
+            const nxt = map[slotKey(d,end)];
+            if(!nxt || nxt.subject !== item.subject || nxt.color !== item.color) break;
+            end++;
+          }
+          entries.push({
+            day: d, startSlot: start, endSlot: end,
+            subject: item.subject, color: item.color
+          });
+          s = end;
+        }
+      }
+      return entries;
+    }
+
+    function renderEntries(container, plan){
+      const map = planMap(plan);
+      const entries = buildEntriesForPlan(map);
+      container.innerHTML = "";
+      if(entries.length === 0){
+        container.innerHTML = `<div class="hint" style="padding:0;">(비어있음)</div>`;
+        return;
+      }
+      const slotMin = state.settings.slotMinutes;
+      for(const e of entries){
+        const startMin = slotStartMin(e.startSlot, slotMin);
+        const endMin = slotStartMin(e.endSlot, slotMin);
+        const time = `${dayNames[e.day]} · ${minToTime(startMin)}~${minToTime(endMin)}`;
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML = `
+          <div class="left">
+            <div class="topline"><span class="dot" style="--c:${escapeHtml(e.color)}"></span>${escapeHtml(e.subject)}</div>
+            <div class="meta">${escapeHtml(time)}</div>
+          </div>
+          <div class="actions">
+            <button type="button" class="danger">삭제</button>
+          </div>
+        `;
+        const delBtn = div.querySelector("button");
+        delBtn.disabled = !!state.settings.locked;
+        delBtn.addEventListener("click", () => {
+          if(state.settings.locked) return;
+          const map = planMap(plan);
+          for(let s=e.startSlot; s<e.endSlot; s++){
+            delete map[slotKey(e.day,s)];
+          }
+          state.ui.anchor = null;
+          updateProfileStamp();
+          saveState();
+          renderAll();
+        });
+        container.appendChild(div);
+      }
+    }
+
+    function buildConflictEntries(){
+      const p = activeProfile();
+      const slotMin = state.settings.slotMinutes;
+      const slots = slotCount(slotMin);
+      const entries = [];
+      for(let d=0; d<7; d++){
+        let s=0;
+        while(s<slots){
+          const r = p.regular[slotKey(d,s)];
+          const n = p.naesin[slotKey(d,s)];
+          if(!(r && n)){ s++; continue; }
+          const start = s;
+          let end = s+1;
+          while(end<slots){
+            const rr = p.regular[slotKey(d,end)];
+            const nn = p.naesin[slotKey(d,end)];
+            if(!(rr && nn)) break;
+            if(rr.subject !== r.subject || nn.subject !== n.subject || rr.color !== r.color || nn.color !== n.color) break;
+            end++;
+          }
+          entries.push({
+            day: d, startSlot: start, endSlot: end,
+            regular: r, naesin: n
+          });
+          s = end;
+        }
+      }
+      return entries;
+    }
+
+    function renderConflicts(){
+      const entries = buildConflictEntries();
+      listConflicts.innerHTML = "";
+      if(entries.length === 0){
+        listConflicts.innerHTML = `<div class="hint" style="padding:0;">(겹침 없음 🎉)</div>`;
+        return;
+      }
+      const slotMin = state.settings.slotMinutes;
+      for(const e of entries){
+        const startMin = slotStartMin(e.startSlot, slotMin);
+        const endMin = slotStartMin(e.endSlot, slotMin);
+        const time = `${dayNames[e.day]} · ${minToTime(startMin)}~${minToTime(endMin)}`;
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML = `
+          <div class="left">
+            <div class="topline">
+              <span class="dot" style="--c:${escapeHtml(e.regular.color)}"></span>정:${escapeHtml(e.regular.subject)}
+              <span class="dot" style="--c:${escapeHtml(e.naesin.color)}; margin-left:8px;"></span>내:${escapeHtml(e.naesin.subject)}
+            </div>
+            <div class="meta">⚠️ ${escapeHtml(time)}</div>
+          </div>
+          <div class="actions">
+            <button type="button" class="danger">정규 지우기</button>
+            <button type="button" class="danger">내신 지우기</button>
+          </div>
+        `;
+        const [btnReg, btnNae] = div.querySelectorAll("button");
+        btnReg.disabled = !!state.settings.locked;
+        btnNae.disabled = !!state.settings.locked;
+
+        btnReg.addEventListener("click", () => {
+          if(state.settings.locked) return;
+          const map = planMap("regular");
+          for(let s=e.startSlot; s<e.endSlot; s++){
+            delete map[slotKey(e.day,s)];
+          }
+          state.ui.anchor = null;
+          updateProfileStamp();
+          saveState();
+          renderAll();
+        });
+        btnNae.addEventListener("click", () => {
+          if(state.settings.locked) return;
+          const map = planMap("naesin");
+          for(let s=e.startSlot; s<e.endSlot; s++){
+            delete map[slotKey(e.day,s)];
+          }
+          state.ui.anchor = null;
+          updateProfileStamp();
+          saveState();
+          renderAll();
+        });
+
+        listConflicts.appendChild(div);
+      }
+    }
+
+    function renderLists(){
+      renderEntries(listRegular, "regular");
+      renderEntries(listNaesin, "naesin");
+      renderConflicts();
+    }
+
+    // ====== Payments UI ======
+    function populatePayDayOptions(){
+      if(!payDay || payDay.dataset.built) return;
+      for(let i=1;i<=31;i++){
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = `${i}일`;
+        payDay.appendChild(opt);
+      }
+      payDay.dataset.built = "1";
+    }
+
+    function refreshAcademySelect(){
+      if(!mkAcademy) return;
+      const cur = mkAcademy.value;
+      mkAcademy.innerHTML = "";
+
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = "학원(선택)";
+      mkAcademy.appendChild(opt0);
+
+      const list = academies().slice().sort((a,b) => (a.name||"").localeCompare(b.name||"", "ko"));
+      for(const a of list){
+        const opt = document.createElement("option");
+        opt.value = a.id;
+        opt.textContent = a.subject ? `${a.name} · ${a.subject}` : a.name;
+        mkAcademy.appendChild(opt);
+      }
+
+      if(cur && Array.from(mkAcademy.options).some(o => o.value === cur)){
+        mkAcademy.value = cur;
+      }else{
+        mkAcademy.value = "";
+      }
+    }
+
+    function renderPaymentEntry(container, a, due, ym){
+      const paid = isPaid(a.id, ym);
+      const diff = daysDiff(new Date(), due);
+      const dueText = `${toYMD(due)} · ${ddayLabel(diff)}`;
+      const feeText = a.fee ? `${fmtMoney(a.fee)}원` : "-";
+      const remindDays = Array.isArray(a.remindDays) ? a.remindDays : [];
+      const remindText = remindDays.length
+        ? `${remindDays.map(d => d===0 ? "당일" : `${d}일전`).join(" · ")} · ${a.remindTime || "09:00"}`
+        : "없음";
+
+      const statusPill = paid
+        ? `<span class="pill ok">완료</span>`
+        : (diff < 0 ? `<span class="pill due">미결제(연체)</span>` : `<span class="pill wait">미결제</span>`);
+
+      const subjPill = a.subject ? `<span class="pill">${escapeHtml(a.subject)}</span>` : "";
+
+      const div = document.createElement("div");
+      div.className = "entry";
+      div.innerHTML = `
+        <div class="left">
+          <div class="topline">${escapeHtml(a.name)} ${statusPill} ${subjPill}</div>
+          <div class="meta">결제일: <b>${escapeHtml(dueText)}</b> · 금액: <b>${escapeHtml(feeText)}</b></div>
+          <div class="meta">알림: ${escapeHtml(remindText)}</div>
+        </div>
+        <div class="actions">
+          <button type="button" class="${paid ? "" : ""}">${paid ? "되돌리기" : "결제완료"}</button>
+          <button type="button" class="danger">삭제</button>
+        </div>
+      `;
+      const [btnPay, btnDel] = div.querySelectorAll("button");
+      btnPay.disabled = !!state.settings.locked;
+      btnDel.disabled = !!state.settings.locked;
+
+      btnPay.addEventListener("click", () => {
+        if(state.settings.locked) return;
+        if(paid){
+          const ok = confirm(`${a.name} (${ym}) 결제완료 표시를 되돌릴까요?`);
+          if(!ok) return;
+          unmarkPaid(a.id, ym);
+          showToast("되돌렸습니다");
+          renderAll();
+          return;
+        }
+        const def = a.fee ? String(a.fee) : "";
+        const raw = prompt(`${a.name} 결제 금액(원)을 입력하세요`, def);
+        if(raw === null) return;
+        const n = parseInt(String(raw).replace(/[,\s]/g,""), 10);
+        const amt = Number.isFinite(n) ? n : (a.fee || 0);
+        markPaid(a.id, ym, amt);
+        showToast("결제 완료 처리");
+        renderAll();
+      });
+
+      btnDel.addEventListener("click", () => {
+        if(state.settings.locked) return;
+        const ok = confirm(`"${a.name}" 항목을 삭제할까요?\n(결제 기록도 함께 숨겨집니다)`);
+        if(!ok) return;
+        const arr = academies();
+        const idx = arr.findIndex(x => x.id === a.id);
+        if(idx >= 0) arr.splice(idx, 1);
+        updateProfileStamp();
+        saveState();
+        showToast("삭제 완료");
+        renderAll();
+      });
+
+      container.appendChild(div);
+    }
+
+    function renderPayments(){
+      populatePayDayOptions();
+      updateNotifHint();
+      refreshAcademySelect();
+
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth();
+
+      const list = academies().slice().filter(a => a && a.name).sort((a,b) => (a.name||"").localeCompare(b.name||"", "ko"));
+
+      // this month
+      payListThis.innerHTML = "";
+      const thisItems = [];
+      for(const a of list){
+        if(!a.payDay) continue;
+        const due = dueDateForMonth(a.payDay, y, m, a.remindTime || "09:00");
+        const ym = ymKey(due);
+        thisItems.push({a, due, ym});
+      }
+      thisItems.sort((x,y) => x.due - y.due);
+      if(thisItems.length === 0){
+        payListThis.innerHTML = `<div class="hint" style="padding:0;">(등록된 결제 항목이 없습니다)</div>`;
+      }else{
+        for(const it of thisItems){
+          renderPaymentEntry(payListThis, it.a, it.due, it.ym);
+        }
+      }
+
+      // next unpaid
+      payListNext.innerHTML = "";
+      const nextItems = [];
+      for(const a of list){
+        const nx = nextUnpaidDue(a, now);
+        if(!nx) continue;
+        nextItems.push({a, due: nx.due, ym: nx.ym});
+      }
+      nextItems.sort((x,y) => x.due - y.due);
+      if(nextItems.length === 0){
+        payListNext.innerHTML = `<div class="hint" style="padding:0;">(미결제 항목이 없습니다 🎉)</div>`;
+      }else{
+        for(const it of nextItems){
+          renderPaymentEntry(payListNext, it.a, it.due, it.ym);
+        }
+      }
+    }
+
+    // ====== Makeup UI ======
+    function statusLabel(st){
+      if(st === "requested") return "요청됨";
+      if(st === "scheduled") return "확정";
+      if(st === "done") return "완료";
+      if(st === "canceled") return "취소";
+      return st || "-";
+    }
+    function statusPillClass(st){
+      if(st === "done") return "ok";
+      if(st === "requested") return "wait";
+      if(st === "scheduled") return "";
+      if(st === "canceled") return "due";
+      return "";
+    }
+
+    function renderMakeupEntry(container, mk){
+      const a = mk.academyId ? findAcademyById(mk.academyId) : null;
+      const academyName = a ? a.name : "(학원 미지정)";
+      const subject = mk.subject || (a && a.subject) || "(과목 미지정)";
+      const sd = makeupStartDate(mk);
+      let when = "날짜 미정";
+      let dd = "";
+      if(sd){
+        when = `${mk.date} · ${mk.start || ""}${mk.end ? `~${mk.end}` : ""}`;
+        dd = ddayLabel(daysDiff(new Date(), sd));
+      }else if(mk.date){
+        when = mk.date;
+      }
+
+      const pillCls = statusPillClass(mk.status);
+      const pill = `<span class="pill ${pillCls}">${escapeHtml(statusLabel(mk.status))}</span>`;
+      const ddPill = dd ? `<span class="pill ${daysDiff(new Date(), sd) < 0 ? "due" : ""}">${escapeHtml(dd)}</span>` : "";
+
+      const div = document.createElement("div");
+      div.className = "entry";
+      div.innerHTML = `
+        <div class="left">
+          <div class="topline">${escapeHtml(subject)} ${pill} ${ddPill}</div>
+          <div class="meta">학원: <b>${escapeHtml(academyName)}</b></div>
+          <div class="meta">일정: <b>${escapeHtml(when)}</b> · 알림: ${mk.remindMin && Number(mk.remindMin) > 0 ? `${mk.remindMin}분 전` : "없음"}</div>
+        </div>
+        <div class="actions">
+          <button type="button">수정</button>
+          <button type="button">상태</button>
+          <button type="button" class="danger">삭제</button>
+        </div>
+      `;
+      const [btnEdit, btnStatus, btnDel] = div.querySelectorAll("button");
+      btnEdit.disabled = !!state.settings.locked;
+      btnStatus.disabled = !!state.settings.locked;
+      btnDel.disabled = !!state.settings.locked;
+
+      btnEdit.addEventListener("click", () => {
+        if(state.settings.locked) return;
+        const newSubj = normalizeSubject(prompt("과목", subject) || "");
+        if(newSubj === "" && subject !== "(과목 미지정)"){
+          // allow empty only if user explicitly clears; keep
+        }
+        const newDate = (prompt("날짜 (YYYY-MM-DD, 비우면 미정)", mk.date || "") || "").trim();
+        if(newDate && !parseYMD(newDate)){
+          showToast("날짜 형식이 올바르지 않습니다");
+          return;
+        }
+        const newStart = (prompt("시작 시간 (HH:MM)", mk.start || "") || "").trim();
+        const newEnd = (prompt("종료 시간 (HH:MM)", mk.end || "") || "").trim();
+        const newRem = parseInt(prompt("알림(분 전, 0=없음)", String(mk.remindMin ?? 60)) || "0", 10);
+        mk.subject = newSubj || "";
+        mk.date = newDate;
+        mk.start = newStart;
+        mk.end = newEnd;
+        mk.remindMin = Number.isFinite(newRem) ? newRem : 0;
+        mk.updatedAt = nowStamp();
+        updateProfileStamp();
+        saveState();
+        showToast("수정 완료");
+        renderAll();
+      });
+
+      btnStatus.addEventListener("click", () => {
+        if(state.settings.locked) return;
+        const next = mk.status === "requested" ? "scheduled" : (mk.status === "scheduled" ? "done" : (mk.status === "done" ? "requested" : "requested"));
+        mk.status = next;
+        mk.updatedAt = nowStamp();
+        updateProfileStamp();
+        saveState();
+        showToast(`상태 변경: ${statusLabel(next)}`);
+        renderAll();
+      });
+
+      btnDel.addEventListener("click", () => {
+        if(state.settings.locked) return;
+        const ok = confirm("이 보강을 삭제할까요?");
+        if(!ok) return;
+        const arr = makeups();
+        const idx = arr.findIndex(x => x.id === mk.id);
+        if(idx >= 0) arr.splice(idx, 1);
+        updateProfileStamp();
+        saveState();
+        showToast("삭제 완료");
+        renderAll();
+      });
+
+      container.appendChild(div);
+    }
+
+    function renderMakeups(){
+      refreshAcademySelect();
+      updateNotifHint();
+
+      const now = new Date();
+      const today0 = startOfDay(now);
+      const all = makeups().slice();
+
+      const pending = [];
+      const upcoming = [];
+      const done = [];
+
+      for(const mk of all){
+        if(mk.status === "done" || mk.status === "canceled"){
+          done.push(mk);
+          continue;
+        }
+        if(mk.status === "requested" || !mk.date){
+          pending.push(mk);
+          continue;
+        }
+        if(mk.status === "scheduled"){
+          const sd = makeupStartDate(mk);
+          if(!sd){
+            pending.push(mk);
+          }else if(sd >= today0){
+            upcoming.push(mk);
+          }else{
+            // 지난 일정인데 완료처리 안됨 -> 대기함으로
+            pending.push(mk);
+          }
+          continue;
+        }
+        pending.push(mk);
+      }
+
+      const sortByDate = (a,b) => {
+        const da = makeupStartDate(a) || new Date(8640000000000000);
+        const db = makeupStartDate(b) || new Date(8640000000000000);
+        return da - db;
+      };
+      pending.sort(sortByDate);
+      upcoming.sort(sortByDate);
+      done.sort((a,b) => {
+        const da = makeupStartDate(a) || parseYMD(a.date) || new Date(0);
+        const db = makeupStartDate(b) || parseYMD(b.date) || new Date(0);
+        return db - da;
+      });
+
+      mkListPending.innerHTML = "";
+      mkListUpcoming.innerHTML = "";
+      mkListDone.innerHTML = "";
+
+      if(pending.length === 0){
+        mkListPending.innerHTML = `<div class="hint" style="padding:0;">(대기 없음)</div>`;
+      }else{
+        for(const mk of pending){
+          renderMakeupEntry(mkListPending, mk);
+        }
+      }
+      if(upcoming.length === 0){
+        mkListUpcoming.innerHTML = `<div class="hint" style="padding:0;">(예정된 보강 없음)</div>`;
+      }else{
+        for(const mk of upcoming){
+          renderMakeupEntry(mkListUpcoming, mk);
+        }
+      }
+      if(done.length === 0){
+        mkListDone.innerHTML = `<div class="hint" style="padding:0;">(완료/취소 없음)</div>`;
+      }else{
+        for(const mk of done){
+          renderMakeupEntry(mkListDone, mk);
+        }
+      }
+    }
+
+    // ====== Local notifications (앱이 켜져 있을 때) + ICS export ======
+    async function showLocalNotification(title, body){
+      if(!("Notification" in window)) return false;
+      if(Notification.permission !== "granted") return false;
+      const opts = {
+        body,
+        icon: "./icons/icon-192.png",
+        badge: "./icons/icon-96.png",
+      };
+      try{
+        if("serviceWorker" in navigator){
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification(title, opts);
+        }else{
+          new Notification(title, opts);
+        }
+        return true;
+      }catch(e){
+        console.warn("notification failed", e);
+        return false;
+      }
+    }
+
+    function fireOnce(key){
+      state.meta = state.meta || { fired: {} };
+      state.meta.fired = state.meta.fired || {};
+      if(state.meta.fired[key]) return false;
+      state.meta.fired[key] = nowStamp();
+      saveState();
+      return true;
+    }
+
+    async function checkDueReminders(){
+      if(!("Notification" in window)) return;
+      if(Notification.permission !== "granted") return;
+
+      const now = new Date();
+      const windowMs = 6 * 60 * 60 * 1000; // 6시간 이내면 "늦게라도" 알림
+
+      // payments
+      for(const a of academies()){
+        if(!a.payDay) continue;
+        const nx = nextUnpaidDue(a, now);
+        if(!nx) continue;
+        const due = nx.due;
+        const ym = nx.ym;
+        const remindDays = Array.isArray(a.remindDays) ? a.remindDays : [];
+        const base = due.getTime();
+        for(const d of remindDays){
+          const off = safeInt(d, null);
+          if(off === null) continue;
+          const at = new Date(base - off * 86400000);
+          const diff = now.getTime() - at.getTime();
+          if(diff < 0 || diff > windowMs) continue;
+          const key = `pay|${state.activeProfileId}|${a.id}|${ym}|${off}`;
+          if(!fireOnce(key)) continue;
+          const feeText = a.fee ? `${fmtMoney(a.fee)}원` : "";
+          await showLocalNotification(
+            `결제 알림: ${a.name}`,
+            `${toYMD(due)} 결제일 · ${ddayLabel(daysDiff(now, due))}${feeText ? ` · ${feeText}` : ""}`
+          );
+        }
+      }
+
+      // makeups
+      for(const mk of makeups()){
+        if(mk.status !== "scheduled") continue;
+        const sd = makeupStartDate(mk);
+        if(!sd) continue;
+        const rm = safeInt(mk.remindMin, 0) || 0;
+        if(rm <= 0) continue;
+        const at = new Date(sd.getTime() - rm * 60000);
+        const diff = now.getTime() - at.getTime();
+        if(diff < 0 || diff > windowMs) continue;
+        const key = `mk|${state.activeProfileId}|${mk.id}|${rm}|${mk.date}|${mk.start}`;
+        if(!fireOnce(key)) continue;
+        const a = mk.academyId ? findAcademyById(mk.academyId) : null;
+        const academyName = a ? a.name : "";
+        await showLocalNotification(
+          `보강 알림: ${mk.subject || "보강"}`,
+          `${mk.date} ${mk.start || ""}${academyName ? ` · ${academyName}` : ""}`
+        );
+      }
+    }
+
+    let reminderTimer = null;
+    function startReminderTicker(){
+      if(reminderTimer) return;
+      reminderTimer = setInterval(checkDueReminders, 60 * 1000);
+      setTimeout(checkDueReminders, 1500);
+      document.addEventListener("visibilitychange", () => {
+        if(!document.hidden) checkDueReminders();
+      });
+    }
+
+    function icsEscape(s){
+      return String(s||"")
+        .replace(/\\/g, "\\\\")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "")
+        .replace(/;/g, "\\;")
+        .replace(/,/g, "\\,");
+    }
+    function icsDT(d){
+      return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}T${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+    }
+    function downloadText(filename, text, mime="text/plain;charset=utf-8"){
+      const blob = new Blob([text], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    function exportICS(){
+      const p = activeProfile();
+      const now = new Date();
+      const lines = [];
+      lines.push("BEGIN:VCALENDAR");
+      lines.push("VERSION:2.0");
+      lines.push("PRODID:-//JW Schedule//KO");
+      lines.push("CALSCALE:GREGORIAN");
+      lines.push("METHOD:PUBLISH");
+      lines.push(`X-WR-CALNAME:${icsEscape("정우 학원 알림")}`);
+
+      // payments: next 6 months
+      for(const a of academies()){
+        if(!a.payDay) continue;
+        const remindDays = Array.isArray(a.remindDays) ? a.remindDays : [];
+        for(let i=0;i<6;i++){
+          const base = new Date(now.getFullYear(), now.getMonth()+i, 1);
+          const due = dueDateForMonth(a.payDay, base.getFullYear(), base.getMonth(), a.remindTime || "09:00");
+          const ym = ymKey(due);
+          if(isPaid(a.id, ym)) continue; // 이미 처리한 달은 제외
+          // 지난 날짜는 제외
+          if(due.getTime() < startOfDay(now).getTime()) continue;
+          const end = new Date(due.getTime() + 10*60000);
+          lines.push("BEGIN:VEVENT");
+          lines.push(`UID:${icsEscape(`pay-${a.id}-${ym}`)}`);
+          lines.push(`DTSTAMP:${icsDT(now)}`);
+          lines.push(`SUMMARY:${icsEscape(`결제: ${a.name}`)}`);
+          const desc = `학기: ${p.name}\n결제일: ${toYMD(due)}\n금액: ${a.fee ? fmtMoney(a.fee)+"원" : "-"}`;
+          lines.push(`DESCRIPTION:${icsEscape(desc)}`);
+          lines.push(`DTSTART:${icsDT(due)}`);
+          lines.push(`DTEND:${icsDT(end)}`);
+          for(const d of remindDays){
+            const off = safeInt(d, null);
+            if(off === null) continue;
+            lines.push("BEGIN:VALARM");
+            if(off === 0){
+              lines.push("TRIGGER:-PT0M");
+            }else{
+              lines.push(`TRIGGER:-P${off}D`);
+            }
+            lines.push("ACTION:DISPLAY");
+            lines.push(`DESCRIPTION:${icsEscape(`결제 알림: ${a.name}`)}`);
+            lines.push("END:VALARM");
+          }
+          lines.push("END:VEVENT");
+        }
+      }
+
+      // makeups: scheduled only
+      for(const mk of makeups()){
+        if(mk.status !== "scheduled") continue;
+        const sd = makeupStartDate(mk);
+        if(!sd) continue;
+        if(sd.getTime() < startOfDay(now).getTime()) continue;
+        const a = mk.academyId ? findAcademyById(mk.academyId) : null;
+        const academyName = a ? a.name : "";
+        const endT = parseTimeHHMM(mk.end || "", mk.start || "00:00");
+        const end = new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), endT.hh, endT.mm, 0, 0);
+        const finalEnd = end.getTime() > sd.getTime() ? end : new Date(sd.getTime() + 60*60000);
+        lines.push("BEGIN:VEVENT");
+        lines.push(`UID:${icsEscape(`mk-${mk.id}`)}`);
+        lines.push(`DTSTAMP:${icsDT(now)}`);
+        lines.push(`SUMMARY:${icsEscape(`보강: ${mk.subject || ""}${academyName ? ` (${academyName})` : ""}`)}`);
+        const desc = `학기: ${p.name}\n학원: ${academyName || "-"}\n일정: ${mk.date} ${mk.start || ""}${mk.end ? `~${mk.end}` : ""}`;
+        lines.push(`DESCRIPTION:${icsEscape(desc)}`);
+        lines.push(`DTSTART:${icsDT(sd)}`);
+        lines.push(`DTEND:${icsDT(finalEnd)}`);
+        const rm = safeInt(mk.remindMin, 0) || 0;
+        if(rm > 0){
+          lines.push("BEGIN:VALARM");
+          if(rm % 1440 === 0){
+            lines.push(`TRIGGER:-P${rm/1440}D`);
+          }else if(rm % 60 === 0){
+            lines.push(`TRIGGER:-PT${rm/60}H`);
+          }else{
+            lines.push(`TRIGGER:-PT${rm}M`);
+          }
+          lines.push("ACTION:DISPLAY");
+          lines.push(`DESCRIPTION:${icsEscape(`보강 알림: ${mk.subject || "보강"}`)}`);
+          lines.push("END:VALARM");
+        }
+        lines.push("END:VEVENT");
+      }
+
+      lines.push("END:VCALENDAR");
+
+      const filename = `정우스케줄_알림_${toYMD(now)}.ics`;
+      downloadText(filename, lines.join("\r\n"), "text/calendar;charset=utf-8");
+      showToast("캘린더 파일(.ics)을 저장했습니다");
+    }
+
+    // ====== Events ======
+    tabSeg.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-tab]");
+      if(!b) return;
+      const nextTab = b.dataset.tab;
+      state.settings.tab = nextTab;
+      state.ui.anchor = null;
+      saveState();
+
+      // 편의: 시간표에서 선택한 과목을 결제/보강 입력칸에 자동 복사
+      const subj = normalizeSubject(state.ui.subject);
+      if(isValidSubjectName(subj)){
+        if(nextTab === "payments" && paySubject && !paySubject.value) paySubject.value = subj;
+        if(nextTab === "makeup" && mkSubject && !mkSubject.value) mkSubject.value = subj;
+      }
+      renderAll();
+    });
+
+    if(mkAcademy){
+      mkAcademy.addEventListener("change", () => {
+        if(state.settings.locked) return;
+        const a = mkAcademy.value ? findAcademyById(mkAcademy.value) : null;
+        if(a && mkSubject && !mkSubject.value){
+          mkSubject.value = a.subject || "";
+        }
+      });
+    }
+
+    notifPermBtn.addEventListener("click", async () => {
+      if(!("Notification" in window)){
+        showToast("이 브라우저는 알림을 지원하지 않습니다.");
+        updateNotifHint();
+        return;
+      }
+      try{
+        const p = await Notification.requestPermission();
+        updateNotifHint();
+        if(p === "granted"){
+          showToast("알림이 허용되었습니다");
+          startReminderTicker();
+          checkDueReminders();
+        }else if(p === "denied"){
+          showToast("알림이 차단되었습니다");
+        }else{
+          showToast("알림이 아직 미설정입니다");
+        }
+      }catch(err){
+        console.warn("requestPermission failed", err);
+        showToast("알림 권한 요청 실패");
+      }
+    });
+
+    icsExportBtn.addEventListener("click", () => {
+      exportICS();
+    });
+
+    payAddBtn.addEventListener("click", () => {
+      if(state.settings.locked) return;
+      const name = normalizeSubject(payName.value);
+      if(!name){
+        showToast("학원/수업명을 입력하세요");
+        return;
+      }
+      const day = safeInt(payDay.value, null);
+      if(!day){
+        showToast("결제일(일)을 선택하세요");
+        return;
+      }
+      const subject = normalizeSubject(paySubject.value);
+      const fee = safeInt(payFee.value, null);
+      const remindDays = (payRemind.value || "")
+        .split(",")
+        .map(s => safeInt(s, null))
+        .filter(x => x !== null);
+      const remindTime = (payTime.value || "09:00").trim();
+
+      academies().push({
+        id: uid(),
+        name,
+        subject,
+        fee,
+        payDay: day,
+        remindDays,
+        remindTime,
+        createdAt: nowStamp(),
+        updatedAt: nowStamp()
+      });
+      updateProfileStamp();
+      saveState();
+
+      // clear minimal
+      payName.value = "";
+      payFee.value = "";
+      // keep subject for fast entry
+      showToast("결제 항목 추가");
+      renderAll();
+    });
+
+    mkAddBtn.addEventListener("click", () => {
+      if(state.settings.locked) return;
+
+      const academyId = mkAcademy.value || "";
+      const a = academyId ? findAcademyById(academyId) : null;
+
+      const subject = normalizeSubject(mkSubject.value) || (a && a.subject) || "";
+      if(!subject){
+        showToast("과목을 입력하세요");
+        return;
+      }
+
+      const status = mkStatus.value || "requested";
+      const date = (mkDate.value || "").trim();
+      if((status === "scheduled" || status === "done") && !date){
+        showToast("확정/완료 보강은 날짜가 필요합니다");
+        return;
+      }
+      if(date && !parseYMD(date)){
+        showToast("날짜 형식이 올바르지 않습니다");
+        return;
+      }
+
+      const start = (mkStart.value || "").trim();
+      const end = (mkEnd.value || "").trim();
+      const remindMin = safeInt(mkRemindMin.value, 0) || 0;
+
+      makeups().push({
+        id: uid(),
+        academyId: academyId || null,
+        subject,
+        date,
+        start,
+        end,
+        status,
+        remindMin,
+        memo: "",
+        createdAt: nowStamp(),
+        updatedAt: nowStamp()
+      });
+      updateProfileStamp();
+      saveState();
+
+      showToast("보강 추가");
+      renderAll();
+    });
+
+    lockBtn.addEventListener("click", () => {
+      state.settings.locked = !state.settings.locked;
+      state.ui.anchor = null;
+      saveState();
+      syncControls();
+      renderGrid();
+      showToast(state.settings.locked ? "잠금: 보기 전용" : "잠금 해제: 편집 가능");
+    });
+
+    printBtn.addEventListener("click", () => {
+      // 인쇄 전에 비교 모드로 전환 (원복 가능)
+      const prev = state.settings.viewMode;
+      state.settings.viewMode = "compare";
+      saveState();
+      syncControls();
+      renderAll();
+      setTimeout(() => {
+        window.print();
+        // print 후 다시 원복
+        state.settings.viewMode = prev;
+        saveState();
+        syncControls();
+        renderAll();
+      }, 120);
+    });
+
+    profileSelect.addEventListener("change", () => {
+      if(state.settings.locked) return;
+      state.activeProfileId = profileSelect.value;
+      state.ui.anchor = null;
+      saveState();
+      renderAll(true);
+    });
+
+    newProfileBtn.addEventListener("click", () => {
+      if(state.settings.locked) return;
+      const name = normalizeSubject(prompt("새 학기 이름을 입력하세요 (예: 2학기)") || "");
+      if(!name) return;
+      const p = defaultProfile();
+      p.name = name;
+      // unique name not required
+      state.profiles.push(p);
+      state.activeProfileId = p.id;
+      state.ui.anchor = null;
+      saveState();
+      showToast(`"${name}" 생성`);
+      renderAll(true);
+    });
+
+    renameProfileBtn.addEventListener("click", () => {
+      if(state.settings.locked) return;
+      const p = activeProfile();
+      const name = normalizeSubject(prompt("학기 이름을 바꿔주세요", p.name) || "");
+      if(!name) return;
+      p.name = name;
+      updateProfileStamp();
+      saveState();
+      renderAll(true);
+    });
+
+    deleteProfileBtn.addEventListener("click", () => {
+      if(state.settings.locked) return;
+      if(state.profiles.length <= 1){
+        showToast("학기는 최소 1개는 있어야 합니다.");
+        return;
+      }
+      const p = activeProfile();
+      const ok = confirm(`"${p.name}" 학기를 삭제할까요? (되돌릴 수 없음)`);
+      if(!ok) return;
+      state.profiles = state.profiles.filter(x => x.id !== p.id);
+      state.activeProfileId = state.profiles[0].id;
+      state.ui.anchor = null;
+      saveState();
+      renderAll(true);
+    });
+
+    viewSeg.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-view]");
+      if(!b) return;
+      state.settings.viewMode = b.dataset.view;
+      saveState();
+      renderAll();
+    });
+
+    planSeg.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-plan]");
+      if(!b) return;
+      if(state.settings.locked) return;
+      state.settings.activePlan = b.dataset.plan;
+      state.ui.anchor = null;
+      saveState();
+      renderAll();
+    });
+
+    toolSeg.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-tool]");
+      if(!b) return;
+      if(state.settings.locked) return;
+      state.settings.tool = b.dataset.tool;
+      state.ui.anchor = null;
+      saveState();
+      renderAll();
+    });
+
+    preventOverlapCb.addEventListener("change", () => {
+      if(state.settings.locked) return;
+      state.settings.preventOverlap = !!preventOverlapCb.checked;
+      saveState();
+      renderAll();
+    });
+
+    autoColorCb.addEventListener("change", () => {
+      if(state.settings.locked) return;
+      state.settings.autoColor = !!autoColorCb.checked;
+      // apply auto color to current subject
+      const subj = normalizeSubject(state.ui.subject);
+      if(subj && state.settings.autoColor && isValidSubjectName(subj)){
+        const c = getSubjectColor(subj) || autoPickColor(subj);
+        state.ui.color = c;
+        colorPicker.value = c;
+        if(!getSubjectColor(subj)) setSubjectColor(subj, c);
+      }
+      saveState();
+      renderAll();
+    });
+
+    // IME(한글) 조합 중에는 input 이벤트가 여러 번 발생하면서
+    // "ㄱ/구/국/수하" 같은 중간값이 과목 리스트(칩)로 저장될 수 있다.
+    // composition 이벤트로 조합 중 상태를 감지해서, 조합이 끝난 뒤에만 과목 색상/칩 데이터에 반영한다.
+    subjectInput.addEventListener("compositionstart", () => {
+      subjectComposing = true;
+    });
+    subjectInput.addEventListener("compositionend", () => {
+      subjectComposing = false;
+      if(state.settings.locked) return;
+      state.ui.subject = subjectInput.value;
+
+      const subj = normalizeSubject(state.ui.subject);
+      if(subj && state.settings.autoColor && isValidSubjectName(subj)){
+        const c = getSubjectColor(subj) || autoPickColor(subj);
+        state.ui.color = c;
+        colorPicker.value = c;
+        if(!getSubjectColor(subj)) setSubjectColor(subj, c);
+      }
+      state.ui.anchor = null;
+      saveState();
+      renderAll();
+    });
+
+    subjectInput.addEventListener("input", (e) => {
+      if(state.settings.locked) return;
+      state.ui.subject = subjectInput.value;
+
+      // 조합 중에는 저장/칩 업데이트를 하지 않음
+      if(subjectComposing || (e && e.isComposing)){
+        state.ui.anchor = null;
+        saveState();
+        return;
+      }
+
+      const subj = normalizeSubject(state.ui.subject);
+      if(subj && state.settings.autoColor && isValidSubjectName(subj)){
+        const c = getSubjectColor(subj) || autoPickColor(subj);
+        state.ui.color = c;
+        colorPicker.value = c;
+        if(!getSubjectColor(subj)) setSubjectColor(subj, c);
+      }
+      state.ui.anchor = null;
+      saveState();
+      renderAll();
+    });
+
+    colorPicker.addEventListener("input", () => {
+      if(state.settings.locked) return;
+      state.ui.color = colorPicker.value;
+      // if subject exists, assign to subject mapping (manual)
+      const subj = normalizeSubject(state.ui.subject);
+      if(subj){
+        setSubjectColor(subj, state.ui.color);
+      }
+      saveState();
+      renderAll();
+    });
+
+    // ESC clears anchor (desktop)
+    window.addEventListener("keydown", (e) => {
+      if(e.key === "Escape"){
+        state.ui.anchor = null;
+        saveState();
+        renderAll();
+      }
+    });
+
+    // ====== Service Worker ======
+    if("serviceWorker" in navigator){
+      window.addEventListener("load", async () => {
+        try{
+          const reg = await navigator.serviceWorker.register("./sw.js");
+          // update toast
+          reg.addEventListener("updatefound", () => {
+            const sw = reg.installing;
+            if(!sw) return;
+            sw.addEventListener("statechange", () => {
+              if(sw.state === "installed" && navigator.serviceWorker.controller){
+                showToast("새 버전이 있습니다", "새로고침", () => location.reload());
+              }
+            });
+          });
+        }catch(err){
+          console.warn("sw register failed", err);
+        }
+      });
+    }
+
+    // ====== Render all ======
+    function renderAll(rebuild=false){
+      if(rebuild){
+        cellMap.clear();
+      }
+      // palette selection highlight
+      for(const b of paletteEl.querySelectorAll("button.colorbtn")){
+        b.classList.toggle("on", b.dataset.color === state.ui.color);
+      }
+
+      syncControls();
+      renderKpiBar();
+      updateNotifHint();
+
+      const tab = state.settings.tab || "timetable";
+      if(tab === "timetable"){
+        buildSubjectChips();
+        renderGrid();
+        renderLists();
+      }
+      if(tab === "payments"){
+        renderPayments();
+      }
+      if(tab === "makeup"){
+        renderMakeups();
+      }
+    }
+
+    // ====== Init ======
+    buildPalette();
+    populatePayDayOptions();
+    refreshAcademySelect();
+    updateNotifHint();
+    startReminderTicker();
+    renderAll(true);
+
+  })();
+  </script>
+</body>
+</html>
